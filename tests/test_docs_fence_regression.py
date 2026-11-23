@@ -45,5 +45,23 @@ class FenceRegressionTests(unittest.TestCase):
         self.assertIn("## Visible", strip_fences(page))
 
 
+    def test_mismatched_fence_characters_do_not_close_block(self):
+        page = "~~~python\n```\n# Hidden\n~~~\n# Visible\n"
+        self.assertIn("# Visible", strip_fences(page))
+        self.assertNotIn("# Hidden", strip_fences(page))
+
+    def test_indented_closing_fence_with_trailing_spaces(self):
+        page = "   ```python\n# Hidden\n  ```   \n## Visible\n"
+        self.assertEqual(strip_fences(page), "\n\n\n## Visible\n")
+
+    def test_unclosed_fence_hides_remaining_links_and_headings(self):
+        page = "## First\n```python\n[hidden](bad.md)\n## Hidden\n"
+        self.assertEqual(links(page), [])
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "test.md")
+            with open(path, "w", encoding="utf-8", newline="\n") as f:
+                f.write(page)
+            self.assertEqual(anchors(path), {"first"})
+
 if __name__ == "__main__":
     unittest.main()
