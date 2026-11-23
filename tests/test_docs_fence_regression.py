@@ -44,7 +44,6 @@ class FenceRegressionTests(unittest.TestCase):
         page = "```python`not-a-fence\n## Visible\n"
         self.assertIn("## Visible", strip_fences(page))
 
-
     def test_mismatched_fence_characters_do_not_close_block(self):
         page = "~~~python\n```\n# Hidden\n~~~\n# Visible\n"
         self.assertIn("# Visible", strip_fences(page))
@@ -62,6 +61,7 @@ class FenceRegressionTests(unittest.TestCase):
             with open(path, "w", encoding="utf-8", newline="\n") as f:
                 f.write(page)
             self.assertEqual(anchors(path), {"first"})
+
 
 if __name__ == "__main__":
     unittest.main()
