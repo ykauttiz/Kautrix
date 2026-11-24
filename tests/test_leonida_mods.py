@@ -10,6 +10,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -73,6 +74,36 @@ class ManifestTests(unittest.TestCase):
         bad({"archetype_swaps": "all"}, '"archetype_swaps" must be a list')
         bad([1, 2], "not a JSON object")
 
+
+class ManifestPersistenceTests(unittest.TestCase):
+    def test_manifest_writer_keeps_utf8_and_lf(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "mod.json")
+            leonida_mods.write_manifest(str(path), {"name": "Café", "enabled": True})
+            data = path.read_bytes()
+            self.assertIn("Café".encode("utf-8"), data)
+            self.assertTrue(data.endswith(b"\n"))
+            self.assertNotIn(b"\r\n", data)
+            self.assertEqual(read_json(path)["enabled"], True)
+
+    def test_manifest_writer_replaces_existing_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "mod.json")
+            path.write_bytes(b'{"enabled": true}\n')
+            leonida_mods.write_manifest(str(path), {"enabled": False})
+            self.assertFalse(read_json(path)["enabled"])
+            self.assertEqual([item.name for item in Path(tmp).iterdir()], ["mod.json"])
+
+    def test_failed_replace_preserves_original_and_removes_temp(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "mod.json")
+            original = b'{"enabled": true}\n'
+            path.write_bytes(original)
+            with mock.patch.object(leonida_mods.os, "replace", side_effect=OSError("simulated replace failure")):
+                with self.assertRaisesRegex(OSError, "simulated replace failure"):
+                    leonida_mods.write_manifest(str(path), {"enabled": False})
+            self.assertEqual(path.read_bytes(), original)
+            self.assertEqual([item.name for item in Path(tmp).iterdir()], ["mod.json"])
 
 class ManagerTests(unittest.TestCase):
     def test_new_list_enable_disable_and_uninstall(self):
