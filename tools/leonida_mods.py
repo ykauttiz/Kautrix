@@ -302,8 +302,13 @@ def extract_zip(source: str, destination: str) -> None:
         if len(members) > MAX_ZIP_MEMBERS:
             raise ModsError(f"ZIP package has too many entries ({len(members)} > {MAX_ZIP_MEMBERS})")
         estimated = 0
+        seen = set()
         for info in members:
-            zip_parts(info.filename)
+            parts = zip_parts(info.filename)
+            canonical = "/".join(parts).casefold()
+            if canonical in seen:
+                raise ModsError(f"ZIP package repeats member {info.filename!r} (case-insensitive)")
+            seen.add(canonical)
             if info.is_dir():
                 continue
             if info.file_size > MAX_ZIP_MEMBER_BYTES:
