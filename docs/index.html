@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Kautrix: open-source experimental runtime and graphics research, with evidence-first engineering.">
+  <meta name="color-scheme" content="dark light">
+  <title>Kautrix — Runtime &amp; Graphics Research</title>
+  <link rel="stylesheet" href="kautrix-site.css">
+  <script src="kautrix-site.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="shell nav">
+    <a class="brand" href="#main" aria-label="Kautrix home"><span class="mark" aria-hidden="true">K</span> KAUTRIX<span class="edition">/ LAB</span></a>
+    <nav aria-label="Project navigation">
+      <a href="#architecture">Architecture</a><a href="#verification">Verification</a><a href="#contribute">Contribute</a>
+    </nav>
+    <div class="controls">
+      <button id="theme" type="button" hidden>Theme: system</button>
+      <a class="lang" href="#portugues" lang="pt-BR">PT-BR</a>
+    </div>
+  </header>
+  <main id="main" class="shell">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="dot" aria-hidden="true"></span> OPEN SOURCE / EXPERIMENTAL</p>
+        <h1 id="hero-title">Systems research.<br><span class="accent">Built on evidence.</span></h1>
+        <p class="lead">An independent fork researching runtime compatibility, RDNA2 graphics translation and Vulkan integration through synthetic, reproducible tests.</p>
+        <div class="actions"><a class="primary" href="https://github.com/ykauttiz/Kautrix">Explore source <span aria-hidden="true">↗</span></a><a class="secondary" href="https://github.com/ykauttiz/Kautrix/pulls">Review engineering work</a></div>
+        <p class="note">No playable game, universal compatibility or production readiness is claimed.</p>
+      </div>
+      <div class="diagram" aria-label="Research architecture: RDNA2 instruction input, decoder, SPIR-V translation, Vulkan runtime, synthetic verification">
+        <div class="diagram-top"><span>RESEARCH PIPELINE</span><span>01 — 04</span></div>
+        <div class="node"><span>01</span><div><strong>RDNA2</strong><small>Instruction decoding</small></div></div>
+        <div class="connector" aria-hidden="true"></div>
+        <div class="node"><span>02</span><div><strong>SPIR-V</strong><small>Intermediate representation</small></div></div>
+        <div class="connector" aria-hidden="true"></div>
+        <div class="node"><span>03</span><div><strong>Vulkan</strong><small>Runtime integration</small></div></div>
+        <div class="connector" aria-hidden="true"></div>
+        <div class="node final"><span>04</span><div><strong>Verification</strong><small>Synthetic evidence</small></div></div>
+      </div>
+    </section>
+    <section id="architecture" class="section">
+      <p class="eyebrow">01 / ARCHITECTURE</p><h2>Four engineering layers.</h2>
+      <div class="cards">
+        <article><span class="index">01</span><h3>Decoder</h3><p>Binary instruction representation, operand contracts and independent LLVM parity.</p></article>
+        <article><span class="index">02</span><h3>Translation</h3><p>Shader semantics, control flow, wave behavior and typed image operations.</p></article>
+        <article><span class="index">03</span><h3>Runtime</h3><p>Host ABI, resource lifetimes, feature negotiation and Vulkan synchronization.</p></article>
+        <article><span class="index">04</span><h3>Tooling</h3><p>Portable diagnostics, synthetic fixtures and developer-oriented validation.</p></article>
+      </div>
+    </section>
+    <section id="verification" class="section">
+      <p class="eyebrow">02 / VERIFICATION</p><h2>Evidence before claims.</h2>
+      <div class="split">
+        <div class="panel"><h3>Review the exact commit</h3><p>Passing unit tests do not establish GPU correctness. Inspect the workflow run, platform, driver and commit SHA before relying on a result.</p><a href="https://github.com/ykauttiz/Kautrix/actions">GitHub Actions ↗</a></div>
+        <div class="panel"><h3>Experimental by design</h3><p>Sparse image residency, cross-platform integration and runtime behavior remain under investigation. No release readiness is asserted.</p><a href="https://github.com/ykauttiz/Kautrix/pull/13">Integration review ↗</a></div>
+      </div>
+    </section>
+    <section id="contribute" class="section">
+      <p class="eyebrow">03 / CONTRIBUTE</p><h2>Small changes. Reproducible results.</h2>
+      <p class="lead">Work with synthetic inputs only. Never upload proprietary files, keys, generated game artifacts or private information. Preserve author notices and applicable licenses.</p>
+      <div class="actions"><a class="primary" href="https://github.com/ykauttiz/Kautrix/issues">Issues ↗</a><a class="secondary" href="https://github.com/Vyzerythe/Leonida">Upstream Leonida ↗</a></div>
+    </section>
+    <section id="portugues" class="section" lang="pt-BR">
+      <p class="eyebrow">04 / PORTUGUÊS BRASILEIRO</p><h2>Pesquisa gráfica e de sistemas.</h2>
+      <p class="lead">O Kautrix é um fork experimental independente do Leonida, focado em tradução RDNA2 para SPIR-V, integração Vulkan e validação reproduzível. Não há comprovação de jogo jogável ou compatibilidade universal.</p>
+      <p>As contribuições utilizam testes sintéticos e preservam autoria, licença e histórico. Consulte os resultados por commit antes de concluir que uma funcionalidade está validada.</p>
+      <a class="secondary" href="https://github.com/ykauttiz/Kautrix/pulls">Acompanhar desenvolvimento ↗</a>
+    </section>
+  </main>
+  <footer class="shell footer"><span><strong>Kautrix</strong> · Modified fork of Leonida · 2026-11-24</span><a href="https://www.gnu.org/licenses/gpl-3.0.html">GPL-3.0-or-later</a><span>Original authorship preserved. No warranty.</span></footer>
+</body>
+</html>
