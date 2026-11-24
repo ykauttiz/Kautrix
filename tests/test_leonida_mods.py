@@ -7,6 +7,7 @@ import io
 import json
 import os
 from pathlib import Path
+import stat
 import sys
 import tempfile
 import unittest
@@ -73,6 +74,67 @@ class ManifestTests(unittest.TestCase):
         bad({"archetype_swaps": [{"from": "cs_mandy", "to": "0xD7C0CDFF"}]}, "with itself")
         bad({"archetype_swaps": "all"}, '"archetype_swaps" must be a list')
         bad([1, 2], "not a JSON object")
+
+
+class ManifestPersistenceTests(unittest.TestCase):
+    def test_manifest_writer_keeps_utf8_and_lf(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "mod.json")
+            leonida_mods.write_manifest(str(path), {"name": "Café", "enabled": True})
+            data = path.read_bytes()
+            self.assertIn("Café".encode("utf-8"), data)
+            self.assertTrue(data.endswith(b"\n"))
+            self.assertNotIn(b"\r\n", data)
+            self.assertEqual(read_json(path)["enabled"], True)
+
+    def test_manifest_writer_replaces_existing_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "mod.json")
+            path.write_bytes(b'{"enabled": true}\n')
+            leonida_mods.write_manifest(str(path), {"enabled": False})
+            self.assertFalse(read_json(path)["enabled"])
+            self.assertEqual([item.name for item in Path(tmp).iterdir()], ["mod.json"])
+
+    def test_serialization_error_preserves_original(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "mod.json")
+            original = b'{"enabled": true}\n'
+            path.write_bytes(original)
+            with self.assertRaises(TypeError):
+                leonida_mods.write_manifest(str(path), {"bad": object()})
+            self.assertEqual(path.read_bytes(), original)
+            self.assertEqual([item.name for item in Path(tmp).iterdir()], ["mod.json"])
+
+    def test_failed_replace_preserves_original_and_removes_temp(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "mod.json")
+            original = b'{"enabled": true}\n'
+            path.write_bytes(original)
+            with mock.patch.object(leonida_mods.os, "replace", side_effect=OSError("simulated replace failure")):
+                with self.assertRaisesRegex(OSError, "simulated replace failure"):
+                    leonida_mods.write_manifest(str(path), {"enabled": False})
+            self.assertEqual(path.read_bytes(), original)
+            self.assertEqual([item.name for item in Path(tmp).iterdir()], ["mod.json"])
+
+    @unittest.skipIf(os.name == "nt", "POSIX permission bits")
+    def test_replacing_a_manifest_keeps_its_mode(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "mod.json")
+            path.write_bytes(b'{"enabled": true}\n')
+            os.chmod(path, 0o640)
+            leonida_mods.write_manifest(str(path), {"enabled": False})
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o640)
+
+    @unittest.skipIf(os.name == "nt", "POSIX permission bits")
+    def test_new_manifest_follows_the_umask_not_mkstemp_0600(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "mod.json")
+            old = os.umask(0o022)
+            try:
+                leonida_mods.write_manifest(str(path), {"enabled": True})
+            finally:
+                os.umask(old)
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o644)
 
 
 class ManagerTests(unittest.TestCase):
