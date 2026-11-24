@@ -47,11 +47,11 @@ from report_paths import same_report_path  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATE = os.path.join(ROOT, "tools", "progress_dashboard.html")
-LOGO = os.path.join(ROOT, "assets", "logo.png")
+LOGO = os.path.join(ROOT, "assets", "kautrix-mark.svg")
 SCHEMA = "leonida.progress/1"
 STATUSES = ("verified", "implemented", "partial", "failed", "missing", "blocked", "unknown")
 PYTEST_MARKERS = re.compile(r"^import pytest|^ *HAVE_NUMPY =", re.M)   # the CI selection rule (ci.yml)
-DEFAULT_REPO = "ItsNotRexed/Leonida"
+DEFAULT_REPO = "ykauttiz/Kautrix"
 
 
 # ----------------------------------------------------------------------------------------------- helpers
@@ -973,14 +973,15 @@ def summary_line(snap):
 
 
 def logo_src():
-    """The project logo (assets/logo.png) as a data: URI, so the page stays one file that opens from disk; empty when
+    """The project logo (assets/kautrix-mark.svg) as a data: URI, so the page stays one file that opens from disk; empty when
     the asset is absent, and the page then shows no image."""
     try:
         with open(LOGO, "rb") as f:
             data = f.read()
     except OSError:
         return ""
-    return "data:image/png;base64," + base64.b64encode(data).decode("ascii") if data[:8] == b"\x89PNG\r\n\x1a\n" else ""
+    # Only embed the repository-owned mark, not a user-supplied image.
+    return "data:image/svg+xml;base64," + base64.b64encode(data).decode("ascii") if data.startswith(b"<svg ") else ""
 
 
 def render_page(snap, history):

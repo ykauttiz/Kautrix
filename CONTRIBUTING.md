@@ -1,4 +1,6 @@
-# Contributing
+# Contributing to Kautrix
+
+Kautrix is a modified fork of Leonida. Start with the fork's open pull requests and [engineering roadmap](docs/kautrix.md) to avoid duplicate work. The inherited upstream coordination guidance below applies when contributing back upstream. Preserve original author notices, report AI-assisted changes, use synthetic fixtures and record exact test results.
 
 Thanks for helping. A few rules keep the project safe to host:
 

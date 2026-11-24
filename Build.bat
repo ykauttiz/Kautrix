@@ -1,5 +1,5 @@
 @echo off
-title Leonida - Game Builder
+title Kautrix - Builder
 rem Double-click to build. Finds your copy of the game, checks what's installed, and builds into
 rem Documents\Leonida. Extra options pass through, e.g.  Build.bat --out D:\Games\Leonida
 setlocal

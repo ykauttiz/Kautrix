@@ -17,12 +17,13 @@ from dataclasses import dataclass
 STAGE_ORDER = ("shaders", "assets", "runtime", "pipelines")
 
 # Figlet-style wordmark (single block, ASCII only).
+# Keep the legacy constant name for Python callers.
 LEONIDA_BANNER = [
-    r"  _     _____ ___  _   _ ___ ____    _    ",
-    r" | |   | ____/ _ \| \ | |_ _|  _ \  / \   ",
-    r" | |   |  _|| | | |  \| || || | | |/ _ \  ",
-    r" | |___| |__| |_| | |\  || || |_| / ___ \ ",
-    r" |_____|_____\___/|_| \_|___|____/_/   \_" + "\\",
+    "  +--------------------------------------+",
+    "  |               KAUTRIX                |",
+    "  |    RUNTIME / GRAPHICS / RESEARCH     |",
+    "  |          EXPERIMENTAL BUILD          |",
+    "  +--------------------------------------+",
 ]
 
 # ANSI (used only when enable_ansi() succeeded).
