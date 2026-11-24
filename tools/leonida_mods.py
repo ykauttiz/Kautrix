@@ -351,11 +351,13 @@ def publish_mod(staged: str, target: str, force: bool) -> None:
 def stage_source(source: str, work: str) -> tuple[str, str, str]:
     staged = os.path.join(work, "mod")
     source = os.path.abspath(source)
+    archive_source = False
     if os.path.isdir(source):
         root = find_manifest_root(source)
         label = os.path.basename(root.rstrip(os.sep))
         reject_symlinks(root)
     elif os.path.isfile(source) and zipfile.is_zipfile(source):
+        archive_source = True
         unpacked = os.path.join(work, "package")
         extract_zip(source, unpacked)
         root = find_manifest_root(unpacked)
@@ -367,7 +369,13 @@ def stage_source(source: str, work: str) -> tuple[str, str, str]:
     else:
         raise ModsError(f"{source} does not exist")
     try:
-        shutil.copytree(root, staged, symlinks=True)
+        if archive_source:
+            # The archive was unpacked inside `work`, on the same filesystem as
+            # `staged`. Renaming avoids duplicating every extracted byte.
+            os.replace(root, staged)
+        else:
+            # External source folders must be copied: never move user files.
+            shutil.copytree(root, staged, symlinks=True)
     except OSError as exc:
         raise ModsError(f"cannot stage {root}: {exc}") from exc
     return staged, root, label
