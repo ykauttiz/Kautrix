@@ -1,21 +1,25 @@
-Claimed in the coordination issue as: <!-- the item ID from the open "Coordinating who works on what" issue,
-     for example TEST-17, or a link to your claim -->
+### Scope and baseline
 
-Depends on: <!-- #N for every pull request this one builds on or conflicts with (the coordination issue's
-     Commands section, AGENTS.md); delete the line if it builds on none and conflicts with none -->
+<!-- Problem, affected component, exact base SHA, and related issue or PR. -->
 
-### What and why
+### Change and rationale
 
-<!-- What this changes and the problem it solves. -->
+<!-- Smallest sustainable change, invariants, alternatives, and upstream relationship. -->
 
-### Tested
+### Verification
 
-<!-- What you ran and on which GPU and driver (CONTRIBUTING.md). For the shader translator: how many shaders
-     translate and pass spirv-val, before and after. -->
+<!-- Exact commands, OS/toolchain/GPU, commit tested, PASS/FAIL/SKIP/NOT RUN/PENDING. Include run links. -->
 
-AI-assisted: <!-- yes or no (AGENTS.md asks a coding agent to say so) -->
+### Limitations and risk
+
+<!-- Unsupported cases, residual failures, compatibility impact and rollback. -->
+
+AI-assisted: <!-- yes/no -->
 
 ### Checklist
 
-- [ ] No game data, keys or decryption (CONTRIBUTING.md), including in logs or reports quoted here.
-- [ ] A new translator rule is in the contract table of `docs/design.md`, with how it was confirmed.
+- [ ] Original authorship and applicable licenses preserved.
+- [ ] No proprietary game data, keys, binaries or generated game shaders.
+- [ ] No existing tests weakened or disabled.
+- [ ] Relevant regression cases and independent evidence included.
+- [ ] No merge or release until relevant gates pass.

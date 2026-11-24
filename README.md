@@ -1,27 +1,54 @@
-<h1 align="center">
-  <br>
-  <a>
-  <img src="assets/logo.svg" alt="Leonida" width="200">
-</a>
-
-  <br>
-  <b>Leonida</b>
-  <br>
-</h1>
-
-<h4 align="center">Grand Theft Auto VI (Xbox Series) running natively on Windows, built on your PC from your own copy.
-</h4>
-
 <p align="center">
-  <a href="docs/i18n/README.md">Other languages</a> |
-  <a href="#project-status">Status</a> |
-  <a href="#how-to-build">How to build</a> |
-  <a href="#how-it-works">How it works</a> |
-  <a href="#want-to-help">Want to help?</a> |
-  <a href="#credits">Credits</a> |
-  <a href="#license">License</a> |
-  <a href="https://discord.gg/xsqS3DqqVF">Discord</a>
+  <img src="assets/kautrix-banner.svg" alt="Kautrix — Runtime and Graphics Research" width="880">
 </p>
+
+<h1 align="center">Kautrix</h1>
+<p align="center"><strong>Experimental runtime, graphics translation and systems research.</strong></p>
+<p align="center">
+  <a href="https://github.com/ykauttiz/Leonida/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ykauttiz/Leonida/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/ykauttiz/Leonida/actions/workflows/runtime.yml"><img alt="Runtime" src="https://github.com/ykauttiz/Leonida/actions/workflows/runtime.yml/badge.svg"></a>
+  <a href="https://github.com/ykauttiz/Leonida/actions/workflows/no-game-data.yml"><img alt="No Game Data" src="https://github.com/ykauttiz/Leonida/actions/workflows/no-game-data.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="GPL-3.0-or-later" src="https://img.shields.io/badge/license-GPL--3.0--or--later-6366f1"></a>
+</p>
+<p align="center">
+  <a href="docs/kautrix.pt-BR.md">Português (Brasil)</a> ·
+  <a href="docs/kautrix.md">Engineering roadmap</a> ·
+  <a href="docs/testing.md">Testing</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a> ·
+  <a href="SECURITY.md">Security</a>
+</p>
+
+> [!IMPORTANT]
+> Kautrix is an independently maintained GPL-licensed fork of [Leonida](https://github.com/Vyzerythe/Leonida), not an official release or an entirely original codebase. Fork identity changes dated 2026-11-24. Original copyright, authorship, third-party licenses and upstream history are preserved. No playable game or complete compatibility is claimed.
+
+## Engineering focus
+
+| Layer | Purpose |
+|---|---|
+| RDNA2 → SPIR-V | Instruction decoding and graphics translation |
+| Runtime | Host ABI, memory and Vulkan integration |
+| Validation | Synthetic test programs, independent oracles and cross-platform CI |
+| Developer tooling | Diagnostics, documentation and local viewer |
+
+## Fork verification
+
+The badges above show workflow status, not proof of runtime correctness. Check the exact commit and individual jobs on [Actions](https://github.com/ykauttiz/Leonida/actions). The fork's outstanding work includes PERMLANE FI/BC, MIMG status accounting, experimental sparse TFE and cross-platform integration. See the [engineering roadmap](docs/kautrix.md) for evidence and acceptance gates.
+
+### Synthetic development checks
+
+Run from the repository root, without game files:
+
+```sh
+python -I tests/test_rdna2_decode.py
+python -I tests/test_viewer_serve.py
+python -I scripts/run_semantic_tests.py tests/semantic
+```
+
+See [test setup](docs/testing.md) for optional compiler and graphics dependencies. Keep all local generated or proprietary content out of commits, issues and CI logs.
+
+## Upstream technical reference
+
+The material below retains the inherited documentation, including historical measurements and links. Those numbers are upstream reports, not independently reproduced results for Kautrix. Existing CLI flags and environment variables retain their legacy names to avoid breaking scripts and integrations.
 
 Leonida is a static recompilation project. The Xbox Series CPU is x86-64 like a PC, so the game's code is loaded
 and run natively, and the console's system software is reimplemented. The console's precompiled RDNA2 GPU programs

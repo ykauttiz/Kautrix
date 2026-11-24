@@ -411,6 +411,12 @@ class PortArgumentTest(unittest.TestCase):
                 with self.assertRaises(argparse.ArgumentTypeError):
                     serve.port_number(text)
 
+    def test_long_port_values(self):
+        self.assertEqual(serve.port_number("0" * 5000 + "80"), 80)
+        self.assertEqual(serve.port_number("0" * 5000), 0)
+        with self.assertRaises(argparse.ArgumentTypeError):
+            serve.port_number("9" * 5000)
+
     def test_the_cli_reports_a_bad_port_without_a_traceback(self):
         result = subprocess.run(
             [sys.executable, "-I", str(VIEWER / "serve.py"), "--port", "70000"],

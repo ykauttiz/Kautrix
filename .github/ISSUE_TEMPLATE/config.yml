@@ -1,5 +1,8 @@
 blank_issues_enabled: true
 contact_links:
-  - name: How to build
-    url: https://github.com/ItsNotRexed/Leonida#how-to-build
-    about: Prerequisites, Build.bat and the make_game.py options
+  - name: Kautrix engineering roadmap
+    url: https://github.com/ykauttiz/Leonida/blob/main/docs/kautrix.md
+    about: Fork scope, evidence, and current priorities
+  - name: Upstream technical documentation
+    url: https://github.com/Vyzerythe/Leonida
+    about: Original Leonida project and its documentation
