@@ -8,9 +8,9 @@ Inventory at `de4c37383cad386eaa851047628d7b92c51009c5`: 2,366 tracked blobs, in
 
 | Work | Evidence / acceptance |
 |---|---|
-| [PR #13](https://github.com/ykauttiz/Leonida/pull/13) | PERMLANE FI/BC patch on 96c776a597d6; No Game Data passed, CI and Runtime queued at inspection. Require exact-commit cross-platform results. |
-| [PR #25](https://github.com/ykauttiz/Leonida/pull/25) | MIMG TFE status accounting on e407f8edf5ca; No Game Data passed, CI and Runtime queued. Require full semantic suite. |
-| [Sparse TFE experiment](https://github.com/ykauttiz/Leonida/tree/experiment/sparse-tfe-image-load) | Prototype at c5cad3853cbd, disabled by default. Require SPIR-V validation, feature negotiation and resident/nonresident GPU cases before enabling. |
+| [PR #13](https://github.com/ykauttiz/Kautrix/pull/13) | PERMLANE FI/BC patch on 96c776a597d6; No Game Data passed, CI and Runtime queued at inspection. Require exact-commit cross-platform results. |
+| [PR #25](https://github.com/ykauttiz/Kautrix/pull/25) | MIMG TFE status accounting on e407f8edf5ca; No Game Data passed, CI and Runtime queued. Require full semantic suite. |
+| [Sparse TFE experiment](https://github.com/ykauttiz/Kautrix/tree/experiment/sparse-tfe-image-load) | Prototype at c5cad3853cbd, disabled by default. Require SPIR-V validation, feature negotiation and resident/nonresident GPU cases before enabling. |
 | Mesh wave information | Historical Linux mismatch. Isolate expected subgroup behavior and compare to hardware. |
 | Viewer CLI | Bound numeric conversion for unusually long port arguments; add regression cases. |
 
@@ -26,7 +26,7 @@ Keep each change reviewable. Record exact SHA, tool versions, commands and pass/
 
 ## Branding migration
 
-Public-facing documentation and viewer names change first. Legacy executable names, CMake targets, Python modules, environment variables, GitHub remote and historical references remain intentionally compatible until their callers are audited. Keep original upstream logos and credits as historical material, not the new project mark. Before a repository rename, update automation configuration, remote URLs and any dependent action references.
+Public-facing documentation and viewer names change first. The canonical GitHub remote is now `ykauttiz/Kautrix`. Legacy executable names, CMake targets, Python modules, environment variables and historical references remain intentionally compatible until their callers are audited. Keep original upstream logos and credits as historical material, not the new project mark. The repository rename is confirmed; dependent automation configuration and remaining action references must be checked.
 
 ## References
 

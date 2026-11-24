@@ -1,4 +1,6 @@
-# Guide for coding agents
+# Kautrix — Guide for coding agents
+
+Canonical fork: https://github.com/ykauttiz/Kautrix. Preserve upstream Leonida attribution and historical references; do not change ABI, legacy configuration names or report schemas solely for branding. Review existing fork PRs before editing and report exact test evidence.
 
 Read this before changing anything here. [CONTRIBUTING.md](CONTRIBUTING.md) has the rules for every contributor and
 [docs/design.md](docs/design.md) the formats and the translator's runtime contract; this file adds what an agent

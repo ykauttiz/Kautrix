@@ -1,7 +1,7 @@
 blank_issues_enabled: true
 contact_links:
   - name: Kautrix engineering roadmap
-    url: https://github.com/ykauttiz/Leonida/blob/main/docs/kautrix.md
+    url: https://github.com/ykauttiz/Kautrix/blob/main/docs/kautrix.md
     about: Fork scope, evidence, and current priorities
   - name: Upstream technical documentation
     url: https://github.com/Vyzerythe/Leonida

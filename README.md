@@ -5,9 +5,9 @@
 <h1 align="center">Kautrix</h1>
 <p align="center"><strong>Experimental runtime, graphics translation and systems research.</strong></p>
 <p align="center">
-  <a href="https://github.com/ykauttiz/Leonida/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ykauttiz/Leonida/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://github.com/ykauttiz/Leonida/actions/workflows/runtime.yml"><img alt="Runtime" src="https://github.com/ykauttiz/Leonida/actions/workflows/runtime.yml/badge.svg"></a>
-  <a href="https://github.com/ykauttiz/Leonida/actions/workflows/no-game-data.yml"><img alt="No Game Data" src="https://github.com/ykauttiz/Leonida/actions/workflows/no-game-data.yml/badge.svg"></a>
+  <a href="https://github.com/ykauttiz/Kautrix/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ykauttiz/Kautrix/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/ykauttiz/Kautrix/actions/workflows/runtime.yml"><img alt="Runtime" src="https://github.com/ykauttiz/Kautrix/actions/workflows/runtime.yml/badge.svg"></a>
+  <a href="https://github.com/ykauttiz/Kautrix/actions/workflows/no-game-data.yml"><img alt="No Game Data" src="https://github.com/ykauttiz/Kautrix/actions/workflows/no-game-data.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="GPL-3.0-or-later" src="https://img.shields.io/badge/license-GPL--3.0--or--later-6366f1"></a>
 </p>
 <p align="center">
@@ -33,7 +33,7 @@
 
 ## Fork verification
 
-The badges above show workflow status, not proof of runtime correctness. Check the exact commit and individual jobs on [Actions](https://github.com/ykauttiz/Leonida/actions). The fork's outstanding work includes PERMLANE FI/BC, MIMG status accounting, experimental sparse TFE and cross-platform integration. See the [engineering roadmap](docs/kautrix.md) for evidence and acceptance gates.
+The badges above show workflow status, not proof of runtime correctness. Check the exact commit and individual jobs on [Actions](https://github.com/ykauttiz/Kautrix/actions). The fork's outstanding work includes PERMLANE FI/BC, MIMG status accounting, experimental sparse TFE and cross-platform integration. See the [engineering roadmap](docs/kautrix.md) for evidence and acceptance gates.
 
 ### Synthetic development checks
 
@@ -46,6 +46,12 @@ python -I scripts/run_semantic_tests.py tests/semantic
 ```
 
 See [test setup](docs/testing.md) for optional compiler and graphics dependencies. Keep all local generated or proprietary content out of commits, issues and CI logs.
+
+## Compatibility and migration
+
+The canonical remote is now `https://github.com/ykauttiz/Kautrix.git`. Existing clones can update their origin with `git remote set-url origin https://github.com/ykauttiz/Kautrix.git`. This changes only the remote URL, not local files or branches.
+
+The public identity is Kautrix. The `LEONIDA_*` settings, `gta6rt` binary, existing output folders and legacy report schema remain compatible until their consumers are audited. Historical upstream measurements and attribution remain intact.
 
 ## Upstream technical reference
 
@@ -114,7 +120,7 @@ The port isn't downloaded ready-made. It's built on your PC from your own copy.
 **The easy way:**
 
 1. Install the prerequisites below.
-2. Download this project **with its submodule**: `git clone --recursive https://github.com/ItsNotRexed/Leonida`. A
+2. Download this project **with its submodule**: `git clone --recursive https://github.com/ykauttiz/Kautrix`. A
    "Download ZIP" from GitHub leaves out `third_party/rpf9-explorer`. The build fetches it if `git` is installed,
    and otherwise tells you what to do.
 3. Double-click **`Build.bat`**.

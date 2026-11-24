@@ -1,5 +1,5 @@
 @echo off
-title Leonida - Mod Manager
+title Kautrix - Mod Manager
 rem Double-click to open the mod manager window. It manages <port>\mods and never touches the game package.
 setlocal
 cd /d "%~dp0"

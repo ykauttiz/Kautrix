@@ -1,5 +1,7 @@
 # Community quickstarts (other languages)
 
+Kautrix's current project overview is available in [English](../../README.md) and [Português (Brasil)](../kautrix.pt-BR.md). The translations below are inherited upstream historical guides; they have not been revalidated for the renamed fork.
+
 The English documentation ([`README.md`](../../README.md), [`CONTRIBUTING.md`](../../CONTRIBUTING.md), and
 [`docs/`](../README.md)) is **authoritative**.
 
