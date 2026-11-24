@@ -308,6 +308,12 @@ def extract_zip(source: str, destination: str) -> None:
         directories = {}
         files = set()
         for info in members:
+            if info.flag_bits & 0x1:
+                raise ModsError(f"ZIP member {info.filename!r} is encrypted; password-protected mods are not supported")
+            if info.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED,
+                                          zipfile.ZIP_BZIP2, zipfile.ZIP_LZMA):
+                raise ModsError(f"ZIP member {info.filename!r} uses unsupported compression method "
+                                f"{info.compress_type}")
             parts = zip_parts(info.filename)
             relative = "/".join(parts)
             canonical = unicodedata.normalize("NFC", relative).casefold()

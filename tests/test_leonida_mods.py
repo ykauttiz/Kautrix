@@ -39,6 +39,15 @@ def read_json(path):
         return json.load(f)
 
 
+def change_zip_header_field(path, local_offset, central_offset, value):
+    """Patch a synthetic one-member ZIP to exercise error handling before extraction."""
+    data = bytearray(path.read_bytes())
+    for signature, offset in ((bytes.fromhex("504b0304"), local_offset),
+                              (bytes.fromhex("504b0102"), central_offset)):
+        index = data.index(signature)
+        data[index + offset:index + offset + 2] = value.to_bytes(2, "little")
+    path.write_bytes(data)
+
 def cli(*argv):
     out, err = io.StringIO(), io.StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
@@ -276,18 +285,6 @@ class ManagerTests(unittest.TestCase):
             self.assertEqual(code, 2)
             self.assertIn("conflicts", err)
             self.assertEqual(list(mods.iterdir()), [])
-
-    def _install_rejected(self, tmp, blob):
-        package = Path(tmp, "broken.zip")
-        package.write_bytes(blob)
-        mods = Path(tmp, "mods")
-        code, out, err = cli("--dir", str(mods), "install", str(package))
-        self.assertEqual((code, out), (2, ""))
-        self.assertIn("cannot be read", err)
-        self.assertNotIn("Traceback", err)
-        # Nothing half-installed and no staging folder left behind.
-        self.assertEqual(list(mods.iterdir()) if mods.exists() else [], [])
-
     def test_zip_install_reports_a_corrupt_member_instead_of_crashing(self):
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, "w", zipfile.ZIP_STORED) as archive:
@@ -296,30 +293,42 @@ class ManagerTests(unittest.TestCase):
         blob = bytearray(buffer.getvalue())
         blob[blob.index(b"A" * 50) + 10] ^= 0x01  # the stored bytes no longer match the recorded CRC-32
         with tempfile.TemporaryDirectory() as tmp:
-            self._install_rejected(tmp, bytes(blob))
+            package = Path(tmp, "corrupt.zip")
+            package.write_bytes(bytes(blob))
+            mods = Path(tmp, "mods")
+            code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual((code, out), (2, ""))
+            self.assertIn("cannot be read", err)
+            self.assertNotIn("Traceback", err)
+            # Nothing half-installed and no staging folder left behind.
+            self.assertEqual(list(mods.iterdir()) if mods.exists() else [], [])
 
-    def test_zip_install_refuses_encrypted_and_unsupported_members_cleanly(self):
-        def flagged(flag_bits=0, method=None):
-            buffer = io.BytesIO()
-            with zipfile.ZipFile(buffer, "w", zipfile.ZIP_STORED) as archive:
+
+    def test_zip_install_rejects_encrypted_member_before_extraction(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "encrypted.zip")
+            with zipfile.ZipFile(package, "w") as archive:
                 archive.writestr("mod.json", json.dumps(MANDY))
-            out = bytearray(buffer.getvalue())
-            for signature, flag_at, method_at in ((b"PK\x03\x04", 6, 8), (b"PK\x01\x02", 8, 10)):
-                start = out.find(signature)
-                while start != -1:
-                    flags = int.from_bytes(out[start + flag_at:start + flag_at + 2], "little") | flag_bits
-                    out[start + flag_at:start + flag_at + 2] = flags.to_bytes(2, "little")
-                    if method is not None:
-                        out[start + method_at:start + method_at + 2] = method.to_bytes(2, "little")
-                    start = out.find(signature, start + 4)
-            return bytes(out)
+            change_zip_header_field(package, 6, 8, 1)  # general-purpose bit 0
+            mods = Path(tmp, "mods")
+            code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("encrypted", err)
+            self.assertEqual(list(mods.iterdir()), [])
 
-        with self.subTest("encrypted member (never decrypted)"):
-            with tempfile.TemporaryDirectory() as tmp:
-                self._install_rejected(tmp, flagged(flag_bits=0x1))
-        with self.subTest("unsupported compression method"):
-            with tempfile.TemporaryDirectory() as tmp:
-                self._install_rejected(tmp, flagged(method=99))
+    def test_zip_install_rejects_unsupported_compression(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "unsupported.zip")
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+            change_zip_header_field(package, 8, 10, 99)  # unknown method
+            mods = Path(tmp, "mods")
+            code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("unsupported compression method", err)
+            self.assertEqual(list(mods.iterdir()), [])
 
     def test_check_reports_broken_manifest(self):
         with tempfile.TemporaryDirectory() as tmp:
