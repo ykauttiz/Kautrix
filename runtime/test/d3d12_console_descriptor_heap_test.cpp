@@ -24,6 +24,7 @@ struct Ref {
         return &p;
     }
     T* get() const { return p; }
+    T* operator->() const { return p; }
 };
 
 bool check_console_addressed_heap(ID3D12Device* device) {
@@ -65,7 +66,7 @@ bool check_console_addressed_heap(ID3D12Device* device) {
 
 bool check_xs_proxy_slot14(ID3D12Device* real_device) {
     void* proxy_raw = nullptr;
-    if (FAILED(rt::d3d12_xs::create_device_proxy(real_device, IID_PPV_ARGS(&proxy_raw))) || !proxy_raw) {
+    if (FAILED(rt::d3d12_xs::create_device_proxy(real_device, IID_ID3D12Device, &proxy_raw)) || !proxy_raw) {
         std::fprintf(stderr, "create_device_proxy failed\n");
         return false;
     }
@@ -90,10 +91,15 @@ bool check_xs_proxy_slot14(ID3D12Device* real_device) {
                      static_cast<unsigned long>(hr));
         return false;
     }
-    const auto cpu = heap->GetCPUDescriptorHandleForHeapStart();
-    if (cpu.ptr != static_cast<SIZE_T>(console.address)) {
+    // The console heap proxy returns the 64-bit handle in RAX. Calling the PC
+    // COM getter here would use an incompatible hidden-return-pointer ABI.
+    using ConsoleGetCPU = std::uintptr_t(__fastcall*)(ID3D12DescriptorHeap*);
+    auto** vtable = *reinterpret_cast<void***>(heap.get());
+    const auto console_get_cpu = reinterpret_cast<ConsoleGetCPU>(vtable[9]);
+    const auto cpu = console_get_cpu(heap.get());
+    if (cpu != static_cast<std::uintptr_t>(console.address)) {
         std::fprintf(stderr, "proxy CPU heap start mismatch: got 0x%llx want 0x%llx\n",
-                     static_cast<unsigned long long>(cpu.ptr),
+                     static_cast<unsigned long long>(cpu),
                      static_cast<unsigned long long>(console.address));
         return false;
     }
