@@ -312,13 +312,17 @@ def extract_zip(source: str, destination: str) -> None:
 def write_manifest(path: str, data: dict) -> None:
     """Atomically replace mod.json; a failed write must not truncate a working manifest."""
     directory = os.path.dirname(os.path.abspath(path))
-    fd, staged = tempfile.mkstemp(prefix=".mod-json-", suffix=".tmp", dir=directory)
+    staged = os.path.join(directory, f".mod-json-{os.getpid()}-{secrets.token_hex(6)}.tmp")
     try:
-        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
+        # "x" creates the file exclusively with the default mode (the umask applies), unlike
+        # tempfile.mkstemp, whose 0600 files would otherwise replace a readable mod.json.
+        with open(staged, "x", encoding="utf-8", newline="\n") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
             f.write("\n")
             f.flush()
             os.fsync(f.fileno())
+        if os.path.exists(path):
+            shutil.copymode(path, staged)  # keep the mode the manifest already had
         os.replace(staged, path)
     finally:
         if os.path.exists(staged):

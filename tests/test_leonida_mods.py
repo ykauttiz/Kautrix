@@ -7,6 +7,7 @@ import io
 import json
 import os
 from pathlib import Path
+import stat
 import sys
 import tempfile
 import unittest
@@ -114,6 +115,27 @@ class ManifestPersistenceTests(unittest.TestCase):
                     leonida_mods.write_manifest(str(path), {"enabled": False})
             self.assertEqual(path.read_bytes(), original)
             self.assertEqual([item.name for item in Path(tmp).iterdir()], ["mod.json"])
+
+    @unittest.skipIf(os.name == "nt", "POSIX permission bits")
+    def test_replacing_a_manifest_keeps_its_mode(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "mod.json")
+            path.write_bytes(b'{"enabled": true}\n')
+            os.chmod(path, 0o640)
+            leonida_mods.write_manifest(str(path), {"enabled": False})
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o640)
+
+    @unittest.skipIf(os.name == "nt", "POSIX permission bits")
+    def test_new_manifest_follows_the_umask_not_mkstemp_0600(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "mod.json")
+            old = os.umask(0o022)
+            try:
+                leonida_mods.write_manifest(str(path), {"enabled": True})
+            finally:
+                os.umask(old)
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o644)
+
 
 class ManagerTests(unittest.TestCase):
     def test_new_list_enable_disable_and_uninstall(self):
