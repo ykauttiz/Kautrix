@@ -33,6 +33,7 @@ import sys
 import tempfile
 import unicodedata
 import zipfile
+import zlib
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 from types import SimpleNamespace
@@ -352,13 +353,18 @@ def extract_zip(source: str, destination: str) -> None:
                 continue
             os.makedirs(os.path.dirname(target), exist_ok=True)
             member_bytes = 0
-            with archive.open(info) as src, open(target, "wb") as dst:
-                while chunk := src.read(64 * 1024):
-                    member_bytes += len(chunk)
-                    expanded += len(chunk)
-                    if member_bytes > MAX_ZIP_MEMBER_BYTES or expanded > MAX_ZIP_TOTAL_BYTES:
-                        raise ModsError(f"ZIP extraction size limit exceeded at {info.filename!r}")
-                    dst.write(chunk)
+            try:
+                with archive.open(info) as src, open(target, "wb") as dst:
+                    while chunk := src.read(64 * 1024):
+                        member_bytes += len(chunk)
+                        expanded += len(chunk)
+                        if member_bytes > MAX_ZIP_MEMBER_BYTES or expanded > MAX_ZIP_TOTAL_BYTES:
+                            raise ModsError(f"ZIP extraction size limit exceeded at {info.filename!r}")
+                        dst.write(chunk)
+            except (zipfile.BadZipFile, zlib.error, EOFError, NotImplementedError, RuntimeError) as exc:
+                # A bad CRC, a truncated or corrupt stream, an unsupported compression method, or an
+                # encrypted member (never decrypted here) is a bad package, not a crash.
+                raise ModsError(f"ZIP member {info.filename!r} cannot be read: {exc}") from exc
 
 
 def write_manifest(path: str, data: dict) -> None:
