@@ -223,6 +223,59 @@ class ManagerTests(unittest.TestCase):
             self.assertEqual(Path(mods, "distinct", "first", "notes.txt").read_text(), "one")
             self.assertEqual(Path(mods, "distinct", "second", "notes.txt").read_text(), "two")
 
+    def test_zip_install_accepts_explicit_directory_before_its_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "with-dir.zip")
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+                archive.writestr("assets/", "")
+                archive.writestr("assets/notes.txt", "safe")
+            mods = Path(tmp, "mods")
+            code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual((code, err), (0, ""))
+            self.assertIn("installed with-dir", out)
+            self.assertEqual(Path(mods, "with-dir", "assets", "notes.txt").read_text(), "safe")
+
+    def test_zip_install_rejects_implicit_case_insensitive_directories(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "case-parent.zip")
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+                archive.writestr("Assets/a.txt", "a")
+                archive.writestr("assets/b.txt", "b")
+            mods = Path(tmp, "mods")
+            code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual(code, 2)
+            self.assertIn("conflicts", err)
+            self.assertEqual(list(mods.iterdir()), [])
+
+    def test_zip_install_rejects_file_directory_conflicts(self):
+        for reverse in (False, True):
+            with self.subTest(reverse=reverse), tempfile.TemporaryDirectory() as tmp:
+                package = Path(tmp, "file-parent.zip")
+                entries = [("assets", "file"), ("assets/data.txt", "child")]
+                with zipfile.ZipFile(package, "w") as archive:
+                    archive.writestr("mod.json", json.dumps(MANDY))
+                    for member, content in (reversed(entries) if reverse else entries):
+                        archive.writestr(member, content)
+                mods = Path(tmp, "mods")
+                code, out, err = cli("--dir", str(mods), "install", str(package))
+                self.assertEqual(code, 2)
+                self.assertTrue("file" in err or "directory" in err, err)
+                self.assertEqual(list(mods.iterdir()), [])
+
+    def test_zip_install_rejects_nfc_equivalent_directory_names(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "unicode-collision.zip")
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+                archive.writestr("caf\u00e9/one.txt", "one")
+                archive.writestr("cafe\u0301/two.txt", "two")
+            mods = Path(tmp, "mods")
+            code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual(code, 2)
+            self.assertIn("conflicts", err)
+            self.assertEqual(list(mods.iterdir()), [])
     def test_check_reports_broken_manifest(self):
         with tempfile.TemporaryDirectory() as tmp:
             broken = Path(tmp, "mods", "broken")
