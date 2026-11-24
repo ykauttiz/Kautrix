@@ -310,9 +310,19 @@ def extract_zip(source: str, destination: str) -> None:
 
 
 def write_manifest(path: str, data: dict) -> None:
-    with open(path, "w", encoding="utf-8", newline="\n") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-        f.write("\n")
+    """Atomically replace mod.json; a failed write must not truncate a working manifest."""
+    directory = os.path.dirname(os.path.abspath(path))
+    fd, staged = tempfile.mkstemp(prefix=".mod-json-", suffix=".tmp", dir=directory)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(staged, path)
+    finally:
+        if os.path.exists(staged):
+            os.unlink(staged)
 
 
 def set_enabled_in_manifest(manifest_path: str, enabled: bool) -> None:
