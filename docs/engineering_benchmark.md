@@ -40,7 +40,8 @@ Minimum local commands (from the repository root; no proprietary files required)
 ```sh
 python -m compileall -q make_game.py tools tests
 python -I tests/test_docs_links.py
-python -I tests/test_docs_fence_regression.py
+# Run the next test only on the branch containing fork PR #2, until merged:
+# python -I tests/test_docs_fence_regression.py
 python -I tests/test_make_game_pipeline_preflight.py
 python -I tests/test_leonida_mods.py
 python -I scripts/check_no_game_data.py
