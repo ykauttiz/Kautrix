@@ -5003,6 +5003,21 @@ public:
     // {c58e1d27-3a96-4b4f-9e72-6d0a8b5f3c61}
     static constexpr GUID kTag{0xc58e1d27, 0x3a96, 0x4b4f, {0x9e, 0x72, 0x6d, 0x0a, 0x8b, 0x5f, 0x3c, 0x61}};
 
+    // The console slot-14 heap needs mutable descriptor state and this device's
+    // COM identity. Keep both accesses in Device: a friend declared here would
+    // refer to a different function because this class is in an anonymous namespace.
+    HRESULT create_console_heap(const D3D12_DESCRIPTOR_HEAP_DESC& desc,
+                                D3D12_GPU_VIRTUAL_ADDRESS address, std::uint64_t size,
+                                REFIID riid, void** out) {
+        auto* heap = new DescriptorHeap(state_, desc, address, size);
+        heap->attach_device(identity());
+        if (!heap->ok()) {
+            heap->Release();
+            return E_OUTOFMEMORY;
+        }
+        return hand_out(heap, riid, out);
+    }
+
     explicit Device(const VulkanDeviceInfo& info) {
         // Every Vulkan device serves Xbox device slot 133, whichever entry made it: create_vulkan_device and the
         // standalone device gta6rt --run uses both come through here (found in review: registering only in
@@ -9998,13 +10013,7 @@ HRESULT create_console_descriptor_heap(ID3D12Device* device, const D3D12_DESCRIP
     auto* d = Device::from<Device>(real ? real : device);
     if (!d) return E_INVALIDARG;
 
-    auto* heap = new DescriptorHeap(d->state(), *desc, console_address, console_size);
-    heap->attach_device(d->identity());
-    if (!heap->ok()) {
-        heap->Release();
-        return E_OUTOFMEMORY;
-    }
-    return hand_out(heap, riid, out);
+    return d->create_console_heap(*desc, console_address, console_size, riid, out);
 }
 
 std::filesystem::path configured_shader_directory(std::string* error, const std::filesystem::path& config) {

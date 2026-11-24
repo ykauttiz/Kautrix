@@ -2,6 +2,9 @@
 # tests on a Mac) on runtime or translator changes, so a change that breaks the C++ build or tests shows up in CI.
 name: Runtime
 
+# Use direct compiler invocation while the hosted sccache backend is quota-limited.
+# A cache is an optimization, not a prerequisite for compiling or running tests.
+
 on:
   # What can break this build: the runtime and its vendored queue, the scripts the jobs run, this workflow, the
   # line endings every checkout gets (.gitattributes), and everything the tools those scripts read depend on -
@@ -102,11 +105,9 @@ concurrency:
 jobs:
   windows:
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     outputs:
       wine-artifact: ${{ steps.upload-wine-artifact.outcome }}
-    env:
-      SCCACHE_GHA_ENABLED: "true"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -202,7 +203,6 @@ jobs:
           if ($envLines.Count -gt 0) {
             Add-Content -LiteralPath $env:GITHUB_ENV -Value $envLines -Encoding utf8
           }
-      - uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
       - name: Cache Vulkan headers
         id: vulkan-headers-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -243,7 +243,6 @@ jobs:
           -DCMAKE_BUILD_TYPE=RelWithDebInfo
           -DLEONIDA_D3D12_SHIM_TESTS=ON
           -DLEONIDA_REQUIRE_VULKAN=ON
-          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
           -DCMAKE_POLICY_DEFAULT_CMP0141=NEW
           -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded
       - name: Build
@@ -368,12 +367,9 @@ jobs:
   # translator or harness change that breaks a test result shows up on every pull request, without a GPU.
   linux-gpu-tools:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    env:
-      SCCACHE_GHA_ENABLED: "true"
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
       - name: Cache Vulkan headers
         id: vulkan-headers-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -406,7 +402,6 @@ jobs:
         run: >-
           cmake -S runtime -B runtime/build -G Ninja
           -DCMAKE_BUILD_TYPE=RelWithDebInfo
-          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
           -DLEONIDA_REQUIRE_VULKAN=ON
       - name: Build
         run: cmake --build runtime/build --parallel
@@ -502,9 +497,8 @@ jobs:
   # 16's libc++ has no floating-point std::from_chars (vk_pipeline_check.cpp).
   macos:
     runs-on: macos-26
-    timeout-minutes: 20
+    timeout-minutes: 40
     env:
-      SCCACHE_GHA_ENABLED: "true"
       HOMEBREW_NO_AUTO_UPDATE: "1"
       HOMEBREW_NO_INSTALL_CLEANUP: "1"
     steps:
@@ -514,7 +508,6 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
-      - uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
       - name: Install MoltenVK, the Vulkan headers and loader, llvm-mc, SPIRV-Tools and glslang
         run: |
           brew install llvm molten-vk vulkan-headers vulkan-loader vulkan-tools spirv-tools glslang ninja
@@ -531,7 +524,6 @@ jobs:
           cmake -S runtime -B runtime/build -G Ninja
           -DCMAKE_BUILD_TYPE=RelWithDebInfo
           -DVulkan_INCLUDE_DIR="$(brew --prefix)/include"
-          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
           -DLEONIDA_REQUIRE_VULKAN=ON
       - name: Build
         id: macos-build

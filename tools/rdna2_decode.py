@@ -979,7 +979,12 @@ def _decode_one(code: bytes, pc: int, wave32: bool, mcpu: str) -> tuple[dict | N
                     args.append(_src(src1, w, lit, neg=bool(neg & 2), absm=bool(abs_bits & 2)))
             elif fn == "SRC2":
                 args.append(_src(src2, w, lit, neg=bool(neg & 4), absm=bool(abs_bits & 4)))
-        if op_sel:
+        if name in ("v_permlane16_b32", "v_permlanex16_b32"):
+            # These opcodes use two op_sel bits for FI and BC, not half selection.
+            # Match the LLVM disassembler: only bits 0 and 1 are printed.
+            if op_sel & 3:
+                mods.append(f"op_sel:[{op_sel & 1},{(op_sel >> 1) & 1}]")
+        elif op_sel:
             # op_sel prints [s0,s1,...,dst] (nsrc + 1 bits, or nsrc for VOPC).
             nbits = nsrc if opc < 0x100 else (nsrc + 1)
             bits = [(op_sel >> i) & 1 for i in range(nsrc)]

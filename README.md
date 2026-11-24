@@ -6,8 +6,8 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-6554C0" alt="GPL-3.0-or-later"></a>
-  <a href="https://github.com/ykauttiz/Kautrix/actions/workflows/ci.yml"><img src="https://github.com/ykauttiz/Kautrix/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI on main"></a>
-  <a href="https://github.com/ykauttiz/Kautrix/actions/workflows/runtime.yml"><img src="https://github.com/ykauttiz/Kautrix/actions/workflows/runtime.yml/badge.svg?branch=main" alt="Runtime on main"></a>
+  <a aria-label="CI on main" href="https://github.com/ykauttiz/Kautrix/actions/workflows/ci.yml"><img src="https://github.com/ykauttiz/Kautrix/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI on main"></a>
+  <a aria-label="Runtime on main" href="https://github.com/ykauttiz/Kautrix/actions/workflows/runtime.yml"><img src="https://github.com/ykauttiz/Kautrix/actions/workflows/runtime.yml/badge.svg?branch=main" alt="Runtime on main"></a>
 </p>
 <p align="center">
   <a href="#project-status">Status</a> ·

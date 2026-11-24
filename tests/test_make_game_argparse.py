@@ -353,7 +353,9 @@ class JobsHandlingTest(unittest.TestCase):
             os.makedirs(game)
             with patch.object(sys, "argv", ["make_game.py", "--game", game, "--out", out, "--work", work,
                                             "--no-tui", "--stages", "shaders", "--jobs", "6"]):
-                with patch("make_game.below_normal"):
+                # These checks isolate CLI forwarding from the host CPU job clamp.
+                with patch("make_game.below_normal"), \
+                        patch("make_game.leonida_tui.cpu_jobs_bounds", return_value=(1, 8, 16)):
                     with patch("make_game.check", return_value={"expected_exe": "g.exe"}):
                         with patch("make_game.preflight") as mock_preflight:
                             with patch("make_game.log"):
@@ -380,7 +382,9 @@ class JobsHandlingTest(unittest.TestCase):
             os.makedirs(game)
             with patch.object(sys, "argv", ["make_game.py", "--game", game, "--out", out, "--work", work,
                                             "--no-tui", "--stages", "assets", "--wav", "--jobs", "10"]):
-                with patch("make_game.below_normal"):
+                # These checks isolate CLI forwarding from the host CPU job clamp.
+                with patch("make_game.below_normal"), \
+                        patch("make_game.leonida_tui.cpu_jobs_bounds", return_value=(1, 8, 16)):
                     with patch("make_game.check", return_value={"expected_exe": "g.exe"}):
                         with patch("make_game.preflight"):
                             with patch("make_game.log"):

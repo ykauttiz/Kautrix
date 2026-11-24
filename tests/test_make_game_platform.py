@@ -206,7 +206,8 @@ class RuntimeBuildPreflightTest(unittest.TestCase):
 
 class RuntimePackagingTest(unittest.TestCase):
     def setUp(self):
-        self.root = self.enterContext(tempfile.TemporaryDirectory())
+        # Child processes report physical working directories (macOS /var is a symlink).
+        self.root = os.path.realpath(self.enterContext(tempfile.TemporaryDirectory()))
         self.build = os.path.join(self.root, "runtime", "build")
         self.game = os.path.join(self.root, "game")
         self.out = os.path.join(self.root, "out")
