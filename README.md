@@ -1,43 +1,52 @@
-<h1 align="center">
-  <br>
-  <a>
-  <img src="assets/logo.svg" alt="Leonida" width="200">
-</a>
+<p align="center"><img src="assets/kautrix-banner.svg" alt="Kautrix — open-source engineering" width="900"></p>
 
-  <br>
-  <b>Leonida</b>
-  <br>
-</h1>
-
-<h4 align="center">Grand Theft Auto VI (Xbox Series) running natively on Windows, built on your PC from your own copy.
-</h4>
+<h1 align="center">Kautrix</h1>
+<p align="center"><strong>Experimental graphics and runtime engineering</strong></p>
+<p align="center">RDNA2 · SPIR-V · Vulkan · Reproducible validation</p>
 
 <p align="center">
-  <a href="docs/i18n/README.md">Other languages</a> |
-  <a href="#project-status">Status</a> |
-  <a href="#how-to-build">How to build</a> |
-  <a href="#how-it-works">How it works</a> |
-  <a href="#want-to-help">Want to help?</a> |
-  <a href="#credits">Credits</a> |
-  <a href="#license">License</a> |
-  <a href="https://discord.gg/xsqS3DqqVF">Discord</a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-6554C0" alt="GPL-3.0-or-later"></a>
+  <a href="https://github.com/ykauttiz/Kautrix/actions/workflows/ci.yml"><img src="https://github.com/ykauttiz/Kautrix/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI on main"></a>
+  <a href="https://github.com/ykauttiz/Kautrix/actions/workflows/runtime.yml"><img src="https://github.com/ykauttiz/Kautrix/actions/workflows/runtime.yml/badge.svg?branch=main" alt="Runtime on main"></a>
+</p>
+<p align="center">
+  <a href="#project-status">Status</a> ·
+  <a href="#how-to-build">Build</a> ·
+  <a href="docs/repository-map.md">Repository map</a> ·
+  <a href="docs/kautrix.md">Roadmap</a> ·
+  <a href="docs/kautrix.pt-BR.md">Português (BR)</a>
 </p>
 
-Leonida is a static recompilation project. The Xbox Series CPU is x86-64 like a PC, so the game's code is loaded
-and run natively, and the console's system software is reimplemented. The console's precompiled RDNA2 GPU programs
-are translated to SPIR-V for Vulkan. The game's models, textures and audio are read from your package. All of this
-happens **on your PC, from your own copy of the game**.
+Kautrix is an independently maintained fork of [Leonida](https://github.com/Vyzerythe/Leonida).
+It explores static recompilation, graphics translation and host runtime compatibility.
+Original copyright notices, upstream credits and the GPL license remain applicable.
 
 > [!IMPORTANT]
-> This repository **does not contain the game, keys or an executable**, and it does not explain how to get them. You
-> need your own copy, with its files already readable on disk. Nothing here decrypts or works around any protection.
-> Everything the build creates (the generated shaders, extracted assets, the runtime folder and your saves) comes
-> from your game and stays on your PC. Never share those files.
+> This is experimental research, not a playable or stable PC port. No proprietary game content, keys,
+> leaked material or protection bypasses are distributed or requested. Use synthetic fixtures for development.
+> The technical reference below preserves inherited documentation, measurements and compatibility details;
+> those results are not independent benchmarks of Kautrix.
 
-Discord: https://discord.gg/xsqS3DqqVF
+## Start here
 
-Custom Git Mirror: https://git.notrexed.dev/notrexed/Leonida
-<br>
+| Resource | Purpose |
+| --- | --- |
+| [Repository map](docs/repository-map.md) | Directory ownership, entry points and maintenance rules |
+| [Engineering roadmap](docs/kautrix.md) | Review order and evidence requirements |
+| [Português (Brasil)](docs/kautrix.pt-BR.md) | Project overview in Brazilian Portuguese |
+| [Technical documentation](docs/README.md) | Research notes and architecture |
+| [Website source](docs/index.html) | Static project overview; deployment not asserted |
+| [Security](SECURITY.md) | Responsible disclosure |
+| [Actions](https://github.com/ykauttiz/Kautrix/actions) | Exact-commit validation |
+
+The canonical repository is `ykauttiz/Kautrix`. Existing technical identifiers such as `LEONIDA_*`,
+the loader name, output paths and report schemas are intentionally unchanged. A branding change is not an ABI change.
+
+## Inherited technical reference
+
+The sections below retain the original technical documentation and historical results for continuity.
+Refer to the [upstream baseline](https://github.com/ykauttiz/Kautrix/blob/de4c37383cad386eaa851047628d7b92c51009c5/README.md)
+for the original document and to the fork's Actions for current validation.
 
 ## Project status
 
@@ -86,7 +95,7 @@ The port isn't downloaded ready-made. It's built on your PC from your own copy.
 **The easy way:**
 
 1. Install the prerequisites below.
-2. Download this project **with its submodule**: `git clone --recursive https://github.com/ItsNotRexed/Leonida`. A
+2. Download this project **with its submodule**: `git clone --recursive https://github.com/ykauttiz/Kautrix.git`. A
    "Download ZIP" from GitHub leaves out `third_party/rpf9-explorer`. The build fetches it if `git` is installed,
    and otherwise tells you what to do.
 3. Double-click **`Build.bat`**.

@@ -5,6 +5,8 @@ work/
 /assets/*
 !/assets/logo.png
 !/assets/logo.svg
+!/assets/kautrix-banner.svg
+!/assets/kautrix-mark.svg
 carve/
 *.rpf
 *.ttpf
