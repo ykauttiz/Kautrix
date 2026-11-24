@@ -17950,7 +17950,9 @@ def interp_copy_sources(insns):
         if not (a and a[0].get("k") == "vgpr") or base_op(ins["op"]).startswith(
                 ("buffer_store", "tbuffer_store", "scratch_store", "global_store", "image_store", "ds_write")):
             continue
-        for r in vgpr_dest_registers(ins, extra=int("tfe" in ins["mods"])):
+        # MIMG VDATA ranges already include the TFE status VGPR (unlike the buffer IR convention).
+        extra = int("tfe" in ins["mods"] and not base_op(ins["op"]).startswith("image_"))
+        for r in vgpr_dest_registers(ins, extra=extra):
             writes.setdefault(r, []).append(ins)
     copies = {}
     grew = True
