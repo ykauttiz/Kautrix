@@ -769,9 +769,9 @@ class TestProgramThatDiesBeforeItsVerdict(unittest.TestCase):
     def test_helper_failure_keeps_readback_mismatches_before_device_banner(self):
         # vk_store_test prints three readback verdicts to stdout and its
         # device banner to stderr; run_cmd concatenates stdout first.
-        msg = ("rgba8 unorm (float view): 0 bad, texel(5,3) = 182 109 128 255\\n"
-               "r32 uint (uint view): 0 bad, texel(5,3) = 129\\n"
-               "r32 sint (sint view): 64 bad, texel(5,3) = 0\\n"
+        msg = ("rgba8 unorm (float view): 0 bad, texel(5,3) = 182 109 128 255\n"
+               "r32 uint (uint view): 0 bad, texel(5,3) = 129\n"
+               "r32 sint (sint view): 64 bad, texel(5,3) = 0\n"
                "device: Apple Paravirtual device")
         detail = rgt.verdict_line(1, msg)
         self.assertIn("exit 1:", detail)
