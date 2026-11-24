@@ -74,10 +74,59 @@ def parse_blocks(spv):
 
 
 def find_guarded_texel_block(spv):
-    """Verify every OpImageTexelPointer sits inside a basic block entered via an OpSelectionMerge
-    conditional branch whose condition is an OpLoad %bool %active, and return that block's instructions."""
+    """Prove every image-atomic texel pointer is dominated by the active-true path.
+
+    OpSelectionMerge guards a *region*, not necessarily a single block. An
+    inc/dec CAS lowering nests a loop inside that region, so the pointer is
+    legitimately in the loop body rather than the guard's direct true target.
+    Compute CFG dominators instead of requiring a direct branch target.
+    """
     blocks = parse_blocks(spv)
     active_loads = set(re.findall(r"^\s*(%\w+) = OpLoad %bool %active\b", spv, re.M))
+    successors = {}
+    for label, insns in blocks.items():
+        targets = []
+        if insns:
+            term = insns[-1].split()
+            if term[0] == "OpBranch" and len(term) >= 2:
+                targets = [term[1]]
+            elif term[0] == "OpBranchConditional" and len(term) >= 4:
+                targets = [term[2], term[3]]
+            elif term[0] == "OpSwitch" and len(term) >= 3:
+                targets = [term[2], *term[4::2]]
+        successors[label] = [t for t in targets if t in blocks]
+
+    predecessors = {label: set() for label in blocks}
+    for label, targets in successors.items():
+        for target in targets:
+            predecessors[target].add(label)
+
+    # Multiple shader helper functions may occur in one module. The entry of
+    # each connected component has no incoming CFG edges.
+    roots = {label for label, incoming in predecessors.items() if not incoming}
+    reachable = set(roots)
+    pending = list(roots)
+    while pending:
+        for target in successors[pending.pop()]:
+            if target not in reachable:
+                reachable.add(target)
+                pending.append(target)
+
+    dominators = {label: ({label} if label in roots else set(reachable))
+                  for label in reachable}
+    changed = True
+    while changed:
+        changed = False
+        for label in reachable - roots:
+            incoming = predecessors[label] & reachable
+            if not incoming:
+                continue
+            common = set.intersection(*(dominators[p] for p in incoming))
+            new = {label} | common
+            if new != dominators[label]:
+                dominators[label] = new
+                changed = True
+
     guarded_targets = set()
     for insns in blocks.values():
         for i, ln in enumerate(insns):
@@ -86,12 +135,15 @@ def find_guarded_texel_block(spv):
                 m = re.match(r"OpBranchConditional (%\w+) (%\w+) (%\w+)", br)
                 if m and m.group(1) in active_loads:
                     guarded_targets.add(m.group(2))
+
     found = []
-    for lbl, insns in blocks.items():
+    for label, insns in blocks.items():
         if any("= OpImageTexelPointer " in ln for ln in insns):
-            if lbl not in guarded_targets:
-                raise AssertionError(f"OpImageTexelPointer in unguarded block {lbl}")
-            found.append((lbl, insns))
+            if label not in reachable or not any(
+                target in dominators[label] for target in guarded_targets
+            ):
+                raise AssertionError(f"OpImageTexelPointer in unguarded block {label}")
+            found.append((label, insns))
     if not found:
         raise AssertionError("No OpImageTexelPointer emitted")
     return found
