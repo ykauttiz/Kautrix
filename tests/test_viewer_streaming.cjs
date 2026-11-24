@@ -412,6 +412,9 @@ test('Shift speeds the camera up and Ctrl slows it down, on either side of the k
         addEventListener: (type, handler) => handlers.set(type, handler),
         devicePixelRatio: 1, innerWidth: 800, innerHeight: 600, URLSearchParams, location: { search: '' },
         performance: { now: () => 0 },
+        // This fixture executes the full browser module, including loadWorld().
+        // Supply the same browser primitives as the other viewer VM fixtures.
+        AbortController, setTimeout, clearTimeout,
         fetch: manifestResponse({ spawn: [0, 0, 0], chunks: [] }), GLTFLoader: class {},
     });
     // One frame is 0.1 s at the default 40 m/s, so E alone climbs 4 m.
