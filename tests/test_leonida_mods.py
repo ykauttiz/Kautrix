@@ -94,6 +94,15 @@ class ManifestPersistenceTests(unittest.TestCase):
             self.assertFalse(read_json(path)["enabled"])
             self.assertEqual([item.name for item in Path(tmp).iterdir()], ["mod.json"])
 
+    def test_serialization_error_preserves_original(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "mod.json")
+            original = b'{"enabled": true}\n'
+            path.write_bytes(original)
+            with self.assertRaises(TypeError):
+                leonida_mods.write_manifest(str(path), {"bad": object()})
+            self.assertEqual(path.read_bytes(), original)
+            self.assertEqual([item.name for item in Path(tmp).iterdir()], ["mod.json"])
     def test_failed_replace_preserves_original_and_removes_temp(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp, "mod.json")
