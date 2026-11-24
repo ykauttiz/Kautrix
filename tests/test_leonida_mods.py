@@ -10,6 +10,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -165,6 +166,50 @@ class ManagerTests(unittest.TestCase):
             self.assertIn("--archetype-lookup 1A2B3C0", out)
             self.assertTrue(out.rstrip().endswith("--windowed"))
 
+
+class ArchiveStagingTests(unittest.TestCase):
+    """A ZIP is renamed within staging, while a source directory stays intact."""
+
+    def test_root_manifest_zip_installs_without_copytree(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            archive_path = Path(tmp, "simple.zip")
+            with zipfile.ZipFile(archive_path, "w") as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+                archive.writestr("notes.txt", "test")
+            mods = Path(tmp, "mods")
+            with mock.patch.object(leonida_mods.shutil, "copytree",
+                                   side_effect=AssertionError("ZIP staging must not duplicate the tree")):
+                code, out, err = cli("--dir", str(mods), "install", str(archive_path))
+            self.assertEqual((code, err), (0, ""))
+            self.assertIn("installed simple", out)
+            self.assertEqual(Path(mods, "simple", "notes.txt").read_text(), "test")
+
+    def test_nested_manifest_zip_installs_without_copytree(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            archive_path = Path(tmp, "nested.zip")
+            with zipfile.ZipFile(archive_path, "w") as archive:
+                archive.writestr("subfolder/mod.json", json.dumps(MANDY))
+                archive.writestr("subfolder/notes.txt", "inside")
+            mods = Path(tmp, "mods")
+            with mock.patch.object(leonida_mods.shutil, "copytree",
+                                   side_effect=AssertionError("ZIP staging must not duplicate the tree")):
+                code, out, err = cli("--dir", str(mods), "install", str(archive_path))
+            self.assertEqual((code, err), (0, ""))
+            self.assertIn("installed subfolder", out)
+            self.assertEqual(Path(mods, "subfolder", "notes.txt").read_text(), "inside")
+
+    def test_directory_install_preserves_original_source(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp, "source", "keep-original")
+            write_json(source / "mod.json", MANDY)
+            (source / "notes.txt").write_text("original", encoding="utf-8")
+            mods = Path(tmp, "mods")
+            code, out, err = cli("--dir", str(mods), "install", str(source))
+            self.assertEqual((code, err), (0, ""))
+            self.assertIn("installed keep-original", out)
+            self.assertEqual(read_json(source / "mod.json"), MANDY)
+            self.assertEqual((source / "notes.txt").read_text(), "original")
+            self.assertEqual(Path(mods, "keep-original", "notes.txt").read_text(), "original")
 
 class SamplesAndGuiTests(unittest.TestCase):
     def test_bundled_basic_mods_are_valid_and_safe(self):
