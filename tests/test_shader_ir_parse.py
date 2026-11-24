@@ -45,6 +45,18 @@ class ShaderIRParseTests(unittest.TestCase):
         self.assertEqual(shader_ir.operand("1.5"), {"k": "fimm", "v": 1.5, "abs": False})
         self.assertEqual(shader_ir.operand("vmcnt(0)"), {"k": "special", "t": "vmcnt(0)"})
 
+    def test_null_export_target_is_contextual(self):
+        exp = shader_ir.parse_line("exp null off, off, off, off done vm")
+        self.assertEqual(exp["args"][0], {"k": "target", "t": "null"})
+        self.assertEqual(exp["mods"], ["done", "vm"])
+        self.assertEqual([a["t"] for a in exp["args"][1:]], ["off"] * 4)
+        self.assertEqual(shader_ir.parse_line("exp mrt0 v0, v1, v2, v3 done")["args"][0],
+                         {"k": "target", "t": "mrt0"})
+        for asm, slot in (("s_mov_b32 null, s0", 0), ("v_mov_b32_e32 v0, null", 1)):
+            with self.subTest(asm=asm):
+                self.assertEqual(shader_ir.parse_line(asm)["args"][slot],
+                                 {"k": "special", "t": "null", "neg": False, "abs": False})
+
     def test_parse_line_modifiers_sendmsg_and_encoding(self):
         ins = shader_ir.parse_line(
             "\tbuffer_load_dword v0, v1, s[4:7], 0 offen offset:16 glc ; encoding: [0x10,0x10,0x30,0xe0,0x01,0x00,0x01,0x80]"
