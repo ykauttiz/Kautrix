@@ -766,6 +766,25 @@ class TestProgramThatDiesBeforeItsVerdict(unittest.TestCase):
         _rc, rows, out = self.run_one("ps_gather_wrap", -11, "device: X\n")
         self.assertNotIn("pixels differ", rows[0][2], out)
 
+    def test_helper_failure_keeps_readback_mismatches_before_device_banner(self):
+        # vk_store_test prints three readback verdicts to stdout and its
+        # device banner to stderr; run_cmd concatenates stdout first.
+        msg = ("rgba8 unorm (float view): 0 bad, texel(5,3) = 182 109 128 255\\n"
+               "r32 uint (uint view): 0 bad, texel(5,3) = 129\\n"
+               "r32 sint (sint view): 64 bad, texel(5,3) = 0\\n"
+               "device: Apple Paravirtual device")
+        detail = rgt.verdict_line(1, msg)
+        self.assertIn("exit 1:", detail)
+        self.assertIn("r32 sint (sint view): 64 bad", detail)
+        self.assertIn("r32 uint (uint view): 0 bad", detail)
+        self.assertNotIn("device: Apple", detail)
+        self.assertIs(rgt.helper_result(1, msg)[0], False)
+
+    def test_device_only_failure_still_preserves_exit_code(self):
+        self.assertEqual(rgt.verdict_line(1, "device: Apple Paravirtual device"),
+                         "exit 1: device: Apple Paravirtual device")
+        self.assertEqual(rgt.verdict_line(1, ""), "exit 1: no test output")
+
     def test_a_verdict_keeps_its_line(self):
         self.assertEqual(rgt.verdict_line(0, "device: X\ncs_lds: 64 lanes mirrored"), "cs_lds: 64 lanes mirrored")
         self.assertEqual(rgt.verdict_line(0, ""), "")
