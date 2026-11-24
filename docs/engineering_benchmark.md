@@ -6,7 +6,7 @@ This is a **capability-gap analysis**, not a ranking by GitHub stars or lines of
 
 ## Reference implementations
 
-| Reference | Verified project-level capability | Transferable engineering practice | Not transferable directly |
+| Reference | Project-level capability (from each project's public description; not re-verified here) | Transferable engineering practice | Not transferable directly |
 | --- | --- | --- | --- |
 | [Unleashed Recompiled](https://github.com/hedge-dev/UnleashedRecomp) | Native Sonic Unleashed port, Windows/Linux releases, installer, mod support, user settings and a production renderer | Installation/integrity checks, actionable error messages, graceful unsupported-GPU handling, real hardware validation | Its Xbox 360 GPU/CPU interfaces and game-specific patches |
 | [Zelda 64: Recompiled](https://github.com/Zelda64Recomp/Zelda64Recomp) | Working Majora's Mask recompilation using RT64, configurable graphics/input, releases for multiple desktop OSes | Compatibility-focused tests, repeatable releases, input mapping and config UX | The N64/RT64 graphics implementation |
@@ -15,7 +15,7 @@ This is a **capability-gap analysis**, not a ranking by GitHub stars or lines of
 | [Project ReCity](https://github.com/pixl27/ProjectReCity) | Separate Leonida-derived effort, also not playable, with explicit [quality-track roadmap](https://github.com/pixl27/ProjectReCity/blob/main/ROADMAP.md) | Evidence-backed milestones, changelog, user-facing build/troubleshooting guide | Its branding and outdated implementation claims |
 | [Leonida](https://github.com/ykauttiz/Leonida) | Public README reports 26,503/26,503 shaders translated and validated and a stand-in executable test, **but not a GTA VI boot** | Already has a large test suite, progressive diagnostics, build checks and a progress dashboard | Unverified runtime or real-game compatibility cannot be claimed |
 
-The Unleashed Recompiled project explicitly prohibits AI-assisted pull requests to **its own** repository. No source code from that project or any other reference has been copied into this fork.
+Other projects set their own rules for AI-assisted contributions; read a project's contribution policy before sending anything to it. No source code from any reference project has been copied into this fork.
 
 ## Verified baseline and gaps
 
@@ -83,8 +83,8 @@ A successful stand-in does **not** count as a real boot. A shader count does **n
 | FSPX documentation | Fork PR #1 | Diff reviewed against `docs/fspx.md` | Upstream freshness and repository CI |
 | Markdown link checker | Fork PR #2 | Isolated parser regression tests | Full docs scan, Windows and Linux CI |
 | Linux Vulkan checker refresh | Fork PR #3 | Static diff review, isolated reasoning | Real preflight suite, CMake and Linux run |
-| ZIP archive safety | Fork PR #4 | 11 isolated extraction tests, including positive and negative cases | Full mod-manager tests on Linux and Windows |
-| Atomic manifest | Fork PR #5 | 4 isolated persistence tests | Full mod-manager tests and Windows replacement semantics |
+| ZIP archive safety | Fork PR #4 | `tests/test_leonida_mods.py` on Linux (Python 3.13): size/entry limits, duplicate and case/NFC collisions, file-vs-directory conflicts, and corrupt, encrypted or unsupported-compression members now reported as an error instead of a traceback | Windows and NTFS runs; CI |
+| Atomic manifest | Fork PR #5 | Same file on Linux: serialization error, failed replace, and the file mode kept (the first version left `mod.json` at 0600) | Windows replacement semantics; CI |
 | Actual game boot | None | No | Entire authorized runtime integration path |
 
 ## Decision rules
