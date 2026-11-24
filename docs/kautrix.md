@@ -35,3 +35,7 @@ Public-facing documentation and viewer names change first. Legacy executable nam
 - [GitHub repository rename considerations](https://docs.github.com/en/repositories/creating-and-managing-repositories/renaming-a-repository)
 - [SPIR-V specification](https://registry.khronos.org/SPIR-V/specs/unified1/SPIRV.html)
 - [Vulkan device features](https://docs.vulkan.org/refpages/latest/refpages/source/VkPhysicalDeviceFeatures.html)
+
+## Project website
+
+The static site lives in `docs/index.html`, `docs/kautrix-site.css` and `docs/kautrix-site.js`. It requires no external JavaScript, fonts, analytics or build tooling. Open the HTML locally for preview. GitHub Pages is not enabled by this change; select the reviewed branch and `/docs` only after checking the rendered page. The interface uses responsive layouts, system/light/dark themes, keyboard focus and reduced-motion preferences; no accessibility certification is claimed.

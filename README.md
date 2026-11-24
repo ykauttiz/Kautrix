@@ -11,6 +11,7 @@
   <a href="LICENSE"><img alt="GPL-3.0-or-later" src="https://img.shields.io/badge/license-GPL--3.0--or--later-6366f1"></a>
 </p>
 <p align="center">
+  <a href="docs/index.html">Project website (source)</a> ·
   <a href="docs/kautrix.pt-BR.md">Português (Brasil)</a> ·
   <a href="docs/kautrix.md">Engineering roadmap</a> ·
   <a href="docs/testing.md">Testing</a> ·
