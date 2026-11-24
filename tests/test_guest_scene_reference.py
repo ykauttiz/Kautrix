@@ -117,7 +117,8 @@ class GuestSceneReferenceTest(unittest.TestCase):
             self.assertEqual(record, report["runs"]["full"])
             self.assertEqual(record["outcome"], "launch_failed")
             self.assertIsNone(record["returncode"])
-            self.assertEqual(record["cmd"][0], str(bad_loader))
+            # The runner canonicalizes its inputs; on macOS /var resolves to /private/var.
+            self.assertEqual(record["cmd"][0], str(bad_loader.resolve()))
             if sys.platform != "win32":
                 self.assertEqual(record["cmd"][1:3], ["-a", "path with spaces/wine"])
             self.assertTrue(record["launch_error"])
