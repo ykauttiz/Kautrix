@@ -121,8 +121,11 @@ def test_json_report_refuses_to_overwrite_index(tmp_path, capsys, output_kind):
         output = tmp_path / "INDEX.JSON"
 
     probe = mock.Mock(return_value=True)
-    ctx = (mock.patch.multiple(report_paths, path_key=mock.Mock(side_effect=str),
-                               same_name_on_folding_volume=probe)
+    # Force two distinct resolved name keys even on case-insensitive macOS,
+    # then mock the *current* volume-fallback implementation. The old test
+    # mocked public helpers no longer called by same_report_path().
+    ctx = (mock.patch.multiple(report_paths, _resolved_key=mock.Mock(side_effect=str),
+                               _same_resolved_name=probe)
            if output_kind == "folding-volume-case" else contextlib.nullcontext())
     with ctx, (mock.patch.object(os.path, "samefile", side_effect=OSError("not same"))
                if output_kind == "folding-volume-case" else contextlib.nullcontext()):
