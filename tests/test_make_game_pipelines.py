@@ -56,7 +56,14 @@ class PipelinesJobsTest(unittest.TestCase):
                                      os.path.join(self.out, "pipeline_cache.bin")])
 
     def test_jobs_on_the_command_line_reach_the_checker(self):
-        self.assertEqual(self.jobs_of(self.checker_args(lambda: self.main_with("--jobs", "5"))), "5")
+        # CLI forwarding should not depend on the runner's physical CPU count.
+        with mock.patch.object(make_game.leonida_tui, "cpu_jobs_bounds", return_value=(1, 8, 16)):
+            self.assertEqual(self.jobs_of(self.checker_args(lambda: self.main_with("--jobs", "5"))), "5")
+
+    def test_cli_jobs_above_host_capacity_are_clamped(self):
+        # This check retains the production safety cap rather than masking it.
+        with mock.patch.object(make_game.leonida_tui, "cpu_jobs_bounds", return_value=(1, 2, 3)):
+            self.assertEqual(self.jobs_of(self.checker_args(lambda: self.main_with("--jobs", "5"))), "3")
 
     def test_windows_reuses_the_checker_from_the_supplied_runtime_build(self):
         supplied = os.path.join(self.root, "unpacked runtime")
