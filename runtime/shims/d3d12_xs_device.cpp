@@ -23,7 +23,6 @@
 // for a trace that disagrees. The frame-event calls answer from a per-device token counter: there is no vblank source
 // behind the device before a presenter exists, so WaitFrameEventX returns at once with a fresh non-zero token.
 #include "d3d12_xs_device.h"
-#include "d3d12_com.h"  // rt::d3d12::create_console_descriptor_heap
 #include "d3d12_trace.h"
 #include "../src/shader_library.h"  // leonida::fspx_payload_from_parts for slot 67
 
@@ -41,6 +40,17 @@
 #include <new>
 #include <memory>
 #include <utility>
+
+// The standalone device-proxy tests deliberately do not link Vulkan.
+// Declare the console heap entry point without pulling in the heavyweight
+// d3d12_com.h (which includes vulkan/vulkan.h).
+#ifdef LEONIDA_VULKAN_DEVICE
+namespace rt::d3d12 {
+HRESULT create_console_descriptor_heap(ID3D12Device* device, const D3D12_DESCRIPTOR_HEAP_DESC* desc,
+                                       D3D12_GPU_VIRTUAL_ADDRESS address, std::uint64_t size,
+                                       REFIID riid, void** out);
+}
+#endif
 
 namespace rt::d3d12_xs {
 namespace {
@@ -1604,9 +1614,15 @@ HRESULT proxy_create_descriptor_heap(DeviceProxy* self, const D3D12_DESCRIPTOR_H
             // non-zero console VA is present; normal PC 16-byte descs never enter it.
             if (address != 0) {
                 console_extended = true;
+#ifdef LEONIDA_VULKAN_DEVICE
                 hr = rt::d3d12::create_console_descriptor_heap(
                     self->real, desc, static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(address), size,
                     __uuidof(ID3D12DescriptorHeap), &created);
+#else
+                // A PC/mock device has no console GPU-VA descriptor arena.
+                // Refuse this extension instead of fabricating a successful heap.
+                hr = E_NOTIMPL;
+#endif
             }
         }
     }
