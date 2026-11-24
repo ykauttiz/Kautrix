@@ -1,5 +1,7 @@
 # Security policy
 
-Kautrix is experimental; no stable production release is currently asserted. Report vulnerabilities affecting the fork with a minimal synthetic reproduction, exact commit, platform and impact. Use GitHub private vulnerability reporting if it is enabled for this repository; otherwise open a non-sensitive request for a private reporting channel. Do not publish exploitation details, credentials, personal data, proprietary content or real game artifacts.
+Kautrix is experimental and has no stable production release asserted.
 
-Do not test against systems you do not control. Do not bypass protections. Preserve the upstream license and report upstream-only issues to the upstream maintainers through their published channels. Security fixes require review and regression evidence.
+Report security defects privately through GitHub's private vulnerability reporting if available. Otherwise open a non-sensitive request for a private reporting channel. Include the affected commit, platform, impact and a minimal synthetic reproduction. Do not include credentials, personal data, proprietary artifacts or sensitive exploitation details in public reports.
+
+Only test systems you control or have permission to test. Do not bypass protections. Upstream-only defects should be reported through the upstream maintainers' published channels.

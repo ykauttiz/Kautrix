@@ -1,13 +1,19 @@
-# Kautrix
+# Kautrix — Português (Brasil)
 
-Projeto experimental de pesquisa em runtime, tradução gráfica RDNA2 → SPIR-V e integração Vulkan. Fork independente do [Leonida](https://github.com/Vyzerythe/Leonida), distribuído sob GPL-3.0-ou-posterior. A autoria e os avisos originais permanecem preservados.
+Projeto experimental independente de pesquisa em tradução gráfica RDNA2 para SPIR-V, integração Vulkan e compatibilidade de runtime. É um fork do [Leonida](https://github.com/Vyzerythe/Leonida), sob a [licença GPLv3 ou posterior](../LICENSE), com autoria e histórico preservados.
 
-## Estado
+## Estado atual
 
-Não há comprovação de jogo inicializando nem de compatibilidade universal. As correções de decodificação PERMLANE e análise MIMG estão em PRs de revisão; o tratamento de residência TFE é experimental e não está habilitado por padrão.
+Não há comprovação de jogo jogável, lançamento estável ou superioridade de desempenho. O foco é estabilizar os testes sintéticos, revisar as alterações de código e documentar os resultados por commit.
 
-## Desenvolvimento
+| Navegação | Finalidade |
+| --- | --- |
+| [Mapa do repositório](repository-map.md) | Estrutura e responsabilidades |
+| [Roadmap](kautrix.md) | Prioridades e critérios de validação |
+| [Arquitetura](design.md) | Contratos técnicos |
+| [Testes](testing.md) | Validação e ferramentas |
+| [Contribuição](../CONTRIBUTING.md) | Regras de desenvolvimento |
+| [Segurança](../SECURITY.md) | Relato responsável |
+| [GitHub Actions](https://github.com/ykauttiz/Kautrix/actions) | Estado dos testes |
 
-Use exclusivamente dados sintéticos, sem arquivos proprietários, chaves, executáveis de jogos ou material vazado. Consulte os [testes](testing.md), a [arquitetura](design.md), o [roadmap](kautrix.md), as [diretrizes de contribuição](../CONTRIBUTING.md) e a [política de segurança](../SECURITY.md).
-
-Os nomes técnicos internos do Leonida continuam válidos durante a migração de marca. Nenhuma alteração de ABI ou quebra intencional de compatibilidade faz parte desta etapa.
+Não envie arquivos proprietários, chaves, material vazado, credenciais ou artefatos gerados a partir de jogos. Use dados sintéticos. Os identificadores técnicos internos do Leonida continuam válidos durante a migração de marca.

@@ -1,5 +1,11 @@
 # Documentation
 
+## Kautrix navigation
+
+- [Project overview](../README.md) and [repository map](repository-map.md).
+- [Engineering roadmap](kautrix.md) and [Português (Brasil)](kautrix.pt-BR.md).
+- [Security policy](../SECURITY.md) and [contribution guide](../CONTRIBUTING.md).
+
 These notes record what has been measured in the local Xbox Series package and what is still open.
 The headline counts are the measured numbers at the time of the note; the linked page has the
 method, scope and caveats. No game data is included.

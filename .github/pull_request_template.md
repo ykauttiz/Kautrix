@@ -1,3 +1,7 @@
+Upstream coordination item (if applicable): <!-- item ID / claim link -->
+
+Depends on: <!-- related or conflicting PRs; none if not applicable -->
+
 ### Scope and baseline
 
 <!-- Problem, affected component, exact base SHA, and related issue or PR. -->
@@ -21,5 +25,6 @@ AI-assisted: <!-- yes/no -->
 - [ ] Original authorship and applicable licenses preserved.
 - [ ] No proprietary game data, keys, binaries or generated game shaders.
 - [ ] No existing tests weakened or disabled.
+- [ ] New translator rules are recorded in the design contract with confirmation method.
 - [ ] Relevant regression cases and independent evidence included.
 - [ ] No merge or release until relevant gates pass.
