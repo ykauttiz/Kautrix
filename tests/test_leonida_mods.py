@@ -39,6 +39,15 @@ def read_json(path):
         return json.load(f)
 
 
+def change_zip_header_field(path, local_offset, central_offset, value):
+    """Patch a synthetic one-member ZIP to exercise error handling before extraction."""
+    data = bytearray(path.read_bytes())
+    for signature, offset in ((bytes.fromhex("504b0304"), local_offset),
+                              (bytes.fromhex("504b0102"), central_offset)):
+        index = data.index(signature)
+        data[index + offset:index + offset + 2] = value.to_bytes(2, "little")
+    path.write_bytes(data)
+
 def cli(*argv):
     out, err = io.StringIO(), io.StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
@@ -275,6 +284,31 @@ class ManagerTests(unittest.TestCase):
             code, out, err = cli("--dir", str(mods), "install", str(package))
             self.assertEqual(code, 2)
             self.assertIn("conflicts", err)
+            self.assertEqual(list(mods.iterdir()), [])
+    def test_zip_install_rejects_encrypted_member_before_extraction(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "encrypted.zip")
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+            change_zip_header_field(package, 6, 8, 1)  # general-purpose bit 0
+            mods = Path(tmp, "mods")
+            code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("encrypted", err)
+            self.assertEqual(list(mods.iterdir()), [])
+
+    def test_zip_install_rejects_unsupported_compression(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "unsupported.zip")
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+            change_zip_header_field(package, 8, 10, 99)  # unknown method
+            mods = Path(tmp, "mods")
+            code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("unsupported compression method", err)
             self.assertEqual(list(mods.iterdir()), [])
     def test_check_reports_broken_manifest(self):
         with tempfile.TemporaryDirectory() as tmp:
