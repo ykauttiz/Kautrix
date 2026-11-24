@@ -5900,6 +5900,21 @@ class Gen:
         self.emit(f"OpStore %active {new}")
         self.uses_active = True
 
+    def dst_scalar_exec_word(self, d, word):
+        """Computed scalar EXEC_LO/HI writes enable each lane from its own bit.
+
+        The ordinary dst(exec, value) path accepts a per-lane 0/-1 mask
+        representation; arithmetic scalar outputs are a shared 32-bit word.
+        """
+        if d["k"] == "special" and d["t"] in ("exec_lo", "exec_hi"):
+            lane, shift, shifted, bit = self.wave_lane(), self.tmp(), self.tmp(), self.tmp()
+            self.emit(f"{shift} = OpBitwiseAnd %uint {lane} {self.cu(31)}")
+            self.emit(f"{shifted} = OpShiftRightLogical %uint {word} {shift}")
+            self.emit(f"{bit} = OpBitwiseAnd %uint {shifted} {self.cu(1)}")
+            self.exec_half_write(0 if d["t"] == "exec_lo" else 1, bit)
+        else:
+            self.dst(d, word)
+
     def set_scc(self, b):
         """SCC = bool id (1/0)."""
         r = self.tmp()
@@ -8496,7 +8511,7 @@ class Gen:
             self.emit(f"{sh} = OpShiftLeftLogical %uint {self.cu(1)} {w}")
             self.emit(f"{mm} = OpISub %uint {sh} {self.cu(1)}")
             self.emit(f"{r} = OpShiftLeftLogical %uint {mm} {o}")
-            self.dst(a[0], r)
+            self.dst_scalar_exec_word(a[0], r)
             if val is not None and a[0]["k"] == "sgpr" and a[0].get("n", 1) == 1:
                 self.sgpr_imm[a[0]["r"]] = val
         elif op == "ds_bpermute_b32":
@@ -10156,7 +10171,7 @@ class Gen:
                 self.emit(f"{c2} = OpCompositeExtract %uint {s2} 1")
                 self.emit(f"{cc} = OpBitwiseOr %uint {c1} {c2}")
                 r, carry = r2, cc
-            self.dst(a[0], r)
+            self.dst_scalar_exec_word(a[0], r)
             self.emit(f"OpStore %scc {carry}")
             if val is not None and a[0]["k"] == "sgpr" and a[0].get("n", 1) == 1:
                 self.sgpr_imm[a[0]["r"]] = val
@@ -12059,7 +12074,12 @@ class Gen:
                 else:
                     x, y = self.sop2_b32_srcs(op, a)     # lane-mask sources as mask_src (s_and/or_b32 on EXEC)
                 self.emit(f"{r} = {kind} %uint {x} {y}")
-            self._store_b32_mask_dst(a[0], r, to_mask_dst, dst_half)
+            if op in ("s_lshl_b32", "s_lshr_b32", "s_mul_i32") and (
+                a[0]["k"] == "special" and a[0]["t"] in ("exec_lo", "exec_hi")
+            ):
+                self.dst_scalar_exec_word(a[0], r)
+            else:
+                self._store_b32_mask_dst(a[0], r, to_mask_dst, dst_half)
             if op in ("s_and_b32", "s_or_b32"):
                 self.scc_logic(a, r)
             elif op in ("s_lshl_b32", "s_lshr_b32"):
