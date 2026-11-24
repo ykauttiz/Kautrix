@@ -82,9 +82,9 @@ class PipelinePreflightTest(PreflightEnv, unittest.TestCase):
                 mock.patch.object(make_game, "pipeline_check_exe", return_value="vk_pipeline_check.exe"):
             self.assert_preflight_fails(["pipelines"], "No translated shaders yet")
 
-    def test_checker_already_built_passes_preflight(self):
+    def test_windows_checker_already_built_passes_preflight(self):
         self.write_shader_index()
-        with mock.patch.object(make_game, "pipeline_check_exe", return_value="/bin/vk_pipeline_check"):
+        with mock.patch("os.name", "nt"), mock.patch.object(make_game, "pipeline_check_exe", return_value="/bin/vk_pipeline_check"):
             make_game.preflight(["pipelines"], self.work)
 
     @unittest.skipUnless(os.name == "posix", "requires POSIX execute permissions")
@@ -154,7 +154,7 @@ class LinuxPipelineCheckTest(PreflightEnv, unittest.TestCase):
 
     def test_builds_the_checker_after_the_checks(self):
         self.write_shader_index()
-        with mock.patch.object(make_game, "pipeline_check_exe", side_effect=[None, None, "/bin/vk_pipeline_check"]), \
+        with mock.patch.object(make_game, "pipeline_check_exe", return_value="/bin/vk_pipeline_check"), \
                 mock.patch.object(make_game, "build_pipeline_check") as build:
             make_game.preflight(["pipelines"], self.work, jobs=3)
         build.assert_called_once_with(3)
@@ -185,11 +185,24 @@ class LinuxPipelineCheckTest(PreflightEnv, unittest.TestCase):
             self.assert_preflight_fails(["shaders", "pipelines"], "llvm-mc")
         build.assert_not_called()
 
-    def test_a_built_checker_is_not_rebuilt(self):
+    def test_a_built_checker_is_refreshed(self):
         self.write_shader_index()
         with mock.patch.object(make_game, "pipeline_check_exe", return_value="/bin/vk_pipeline_check"), \
                 mock.patch.object(make_game, "build_pipeline_check") as build:
-            make_game.preflight(["pipelines"], self.work)
+            make_game.preflight(["pipelines"], self.work, jobs=4)
+        build.assert_called_once_with(4)
+
+    def test_existing_checker_does_not_hide_missing_cmake(self):
+        self.write_shader_index()
+        with mock.patch.object(make_game, "pipeline_check_exe", return_value="/bin/vk_pipeline_check"), \
+                mock.patch("shutil.which", side_effect=lambda tool: None if tool == "cmake" else "/bin/tool"), \
+                mock.patch.object(make_game, "build_pipeline_check") as build:
+            self.assert_preflight_fails(["pipelines"], "CMake 3.24 or newer")
+        build.assert_not_called()
+
+    def test_unrelated_stages_do_not_rebuild_checker(self):
+        with mock.patch.object(make_game, "build_pipeline_check") as build:
+            make_game.preflight(["check"], self.work)
         build.assert_not_called()
 
     def test_the_build_uses_the_readme_folder(self):

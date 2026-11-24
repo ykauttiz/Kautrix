@@ -201,8 +201,11 @@ class SkipAssetsAndStageIsolationTest(unittest.TestCase):
                 mock.patch.object(make_game, "ensure_submodule") as mock_submodule, \
                 mock.patch.object(make_game, "tool_available", return_value=True), \
                 mock.patch.object(make_game, "pipeline_check_exe", return_value="/bin/vk_pipeline_check"), \
+                mock.patch.object(make_game, "build_pipeline_check"), \
                 mock.patch("shutil.which", return_value="/usr/bin/tool"), \
                 mock.patch("shutil.disk_usage", return_value=mock.Mock(free=100 * (2**30))):
+            # Linux refreshes the checker through CMake on every pipelines run (#7148); this test is about the
+            # .NET and submodule checks, so that build must not really run here.
             make_game.preflight(["shaders", "pipelines"], self.work_dir, wav=True)  # no runtime: Windows-only
             mock_dotnet.assert_not_called()
             mock_submodule.assert_not_called()

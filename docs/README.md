@@ -6,6 +6,7 @@
 - [Engineering roadmap](kautrix.md) and [Português (Brasil)](kautrix.pt-BR.md).
 - [Security policy](../SECURITY.md) and [contribution guide](../CONTRIBUTING.md).
 
+
 These notes record what has been measured in the local Xbox Series package and what is still open.
 The headline counts are the measured numbers at the time of the note; the linked page has the
 method, scope and caveats. No game data is included.
@@ -93,7 +94,7 @@ method, scope and caveats. No game data is included.
 | [buffer_bounds.md](buffer_bounds.md) | V# `OOB_SELECT` bounds measured natively: RDNA2 (gfx1036) follows Mesa's GFX11 column (729/732 cases), not GFX10; raw mode also counts `soffset`. |
 | [buffer_formats.md](buffer_formats.md) | Every GFX10 buffer data format a V# or MTBUF can name, loaded and stored, measured on a Radeon 880M (RDNA3.5, not RDNA2): 1.33 million validated elements, 0 mismatches; SCALED stores convert as NORM, float stores round toward zero. |
 | [fssm_crosscheck.md](fssm_crosscheck.md) | FSSM/RDNA2 facts cross-checked against SCARAB; code starts at `code_off + 0x28`. |
-| [fspx.md](fspx.md) | `FSPX`, the FidelityFX DLL's native compute programs (its shaders' `ACCC` part): directory as the DLL reads it, kind-0 dispatch state, the hash prologue, `gfx1030` for its `v_dot4` code; 13 of 29 translate with `tools/fspx_unpack.py`. |
+| [fspx.md](fspx.md) | `FSPX`, the FidelityFX DLL's native compute programs (its shaders' `ACCC` part): directory as the DLL reads it, kind-0 dispatch state, the hash prologue, `gfx1030` for its `v_dot4` code; 20 of 29 translate and pass `spirv-val` with `tools/fspx_unpack.py` and `tools/rdna2spirv.py` (recount after SHADER-813: 26 before; 8 of the 9 refused stop at a fall-through into undecodable words). |
 | [first_light.md](first_light.md) | Draw an exported model's UVs or sample a supplied texture with `--dds`. The UV draw covered 78.1% on an RTX 2060 SUPER (4,213 vertices, 7,968 triangles). The first draw of a real game model with its own translated VS/PS on a GPU: 4,213 vertices / 7,968 triangles, 78.1% coverage on an RTX 2060 SUPER; `tools/first_light.py`, the `vk_harness` mesh mode, and the same draw through the D3D12 layer (`d3d12_first_light`). |
 | [material_pass_replay.md](material_pass_replay.md) | How one authored mesh writes packed draw indices, how six compute programs read the layout, and which sibling passes read the surface material. |
 | [embedded_shaders.md](embedded_shaders.md) | DXBC containers embedded in the package's DLLs: 52 in `XboxBvhBuilder.dll` (console `FSSM` via the `XDAT`/`XBCH` record; 51/52 pass `spirv-val` today) and 29 `ACCC`/`FSPX` in the FidelityFX upscaler; the scan/extract tool, the one rule still missing, and the build step and run-time lookup of the builder's programs (`<shaders>/bvh/index.json`). |
