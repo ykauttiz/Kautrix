@@ -31,6 +31,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import unicodedata
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
@@ -303,14 +304,35 @@ def extract_zip(source: str, destination: str) -> None:
             raise ModsError(f"ZIP package has too many entries ({len(members)} > {MAX_ZIP_MEMBERS})")
         estimated = 0
         seen = set()
+        directories = {}
+        files = set()
         for info in members:
             parts = zip_parts(info.filename)
-            canonical = "/".join(parts).casefold()
+            relative = "/".join(parts)
+            canonical = unicodedata.normalize("NFC", relative).casefold()
             if canonical in seen:
                 raise ModsError(f"ZIP package repeats member {info.filename!r} (case-insensitive)")
             seen.add(canonical)
+            # Validate implicit parents too: a.zip can contain A/x and a/y,
+            # which otherwise creates different trees on Linux and Windows.
+            for depth in range(1, len(parts)):
+                parent = "/".join(parts[:depth])
+                key = unicodedata.normalize("NFC", parent).casefold()
+                if key in files:
+                    raise ModsError(f"ZIP member {info.filename!r} is nested beneath a file")
+                previous = directories.setdefault(key, parent)
+                if previous != parent:
+                    raise ModsError(f"ZIP directory {parent!r} conflicts with {previous!r} on case-insensitive filesystems")
             if info.is_dir():
+                if canonical in files:
+                    raise ModsError(f"ZIP directory {relative!r} conflicts with a file")
+                previous = directories.setdefault(canonical, relative)
+                if previous != relative:
+                    raise ModsError(f"ZIP directory {relative!r} conflicts with {previous!r} on case-insensitive filesystems")
                 continue
+            if canonical in directories:
+                raise ModsError(f"ZIP file {relative!r} conflicts with a directory")
+            files.add(canonical)
             if info.file_size > MAX_ZIP_MEMBER_BYTES:
                 raise ModsError(f"ZIP member {info.filename!r} exceeds the per-file size limit")
             estimated += info.file_size
