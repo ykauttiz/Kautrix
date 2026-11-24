@@ -158,6 +158,65 @@ def vgpr_ptrs(spv, reg_idx):
     }
 
 
+class GuardDominanceTests(unittest.TestCase):
+    """Synthetic CFGs to keep the guard checker strict without a GPU."""
+
+    def test_nested_cas_loop_remains_inside_active_guard(self):
+        spv = """
+%entry = OpLabel
+%flag = OpLoad %bool %active
+OpSelectionMerge %merge None
+OpBranchConditional %flag %guarded %merge
+%guarded = OpLabel
+OpBranch %loop
+%loop = OpLabel
+OpLoopMerge %loop_done %loop_next None
+OpBranch %do
+%do = OpLabel
+%ptr = OpImageTexelPointer %ptr_image %img %coords %sample
+OpBranch %loop_next
+%loop_next = OpLabel
+OpBranchConditional %retry %loop %loop_done
+%loop_done = OpLabel
+OpBranch %merge
+%merge = OpLabel
+OpReturn
+"""
+        self.assertEqual([label for label, _ in find_guarded_texel_block(spv)], ["%do"])
+
+    def test_access_after_guard_merge_is_rejected(self):
+        spv = """
+%entry = OpLabel
+%flag = OpLoad %bool %active
+OpSelectionMerge %merge None
+OpBranchConditional %flag %guarded %merge
+%guarded = OpLabel
+OpBranch %merge
+%merge = OpLabel
+%ptr = OpImageTexelPointer %ptr_image %img %coords %sample
+OpReturn
+"""
+        with self.assertRaisesRegex(AssertionError, "unguarded block %merge"):
+            find_guarded_texel_block(spv)
+
+    def test_inactive_branch_access_is_rejected(self):
+        spv = """
+%entry = OpLabel
+%flag = OpLoad %bool %active
+OpSelectionMerge %merge None
+OpBranchConditional %flag %guarded %inactive
+%guarded = OpLabel
+OpBranch %merge
+%inactive = OpLabel
+%ptr = OpImageTexelPointer %ptr_image %img %coords %sample
+OpBranch %merge
+%merge = OpLabel
+OpReturn
+"""
+        with self.assertRaisesRegex(AssertionError, "unguarded block %inactive"):
+            find_guarded_texel_block(spv)
+
+
 class ImageAtomicsGuardTests(unittest.TestCase):
     def test_all_image_atomics_2d_and_3d_guarded_and_valid(self):
         simple_ops = [
