@@ -355,13 +355,11 @@ class ManifestTest(unittest.TestCase):
             self.assertEqual(f.read(), '{"previous": true}\n')
         self.assertEqual(os.listdir(self.tmp.name), ["manifest.json"])   # no temporary file left
 
-    def test_failed_replace_of_read_only_manifest_removes_writable_temp(self):
+    def test_failed_replace_of_existing_manifest_removes_writable_temp(self):
         out = os.path.join(self.tmp.name, "manifest.json")
         previous = '{"previous": true}\n'
         with open(out, "w", encoding="utf-8") as f:
             f.write(previous)
-        os.chmod(out, 0o444)
-        self.addCleanup(lambda: os.path.exists(out) and os.chmod(out, 0o600))
         made_writable = []
         real_chmod = os.chmod
 
@@ -378,6 +376,22 @@ class ManifestTest(unittest.TestCase):
         with open(out, encoding="utf-8") as f:
             self.assertEqual(f.read(), previous)
         self.assertEqual(os.listdir(self.tmp.name), ["manifest.json"])
+
+    def test_unwritable_manifest_refuses_to_create_a_staging_file(self):
+        out = os.path.join(self.tmp.name, "manifest.json")
+        previous = b'{"previous": true}\n'
+        with open(out, "wb") as f:
+            f.write(previous)
+        # A real chmod(0444) is OS/user dependent (and writable to root).
+        # Simulate the permission-check failure before NamedTemporaryFile.
+        with mock.patch.object(awc_manifest.os, "open",
+                               side_effect=PermissionError(13, "permission denied", out)):
+            with self.assertRaises(PermissionError):
+                awc_manifest.write_manifest([], 0, 0, "json", out)
+        with open(out, "rb") as f:
+            self.assertEqual(f.read(), previous)
+        self.assertEqual(os.listdir(self.tmp.name), ["manifest.json"])
+
 
     def test_recursive_report_distinguishes_banks_with_the_same_basename(self):
         for folder in ("left", "right"):
