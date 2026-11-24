@@ -105,6 +105,33 @@ class ManifestPersistenceTests(unittest.TestCase):
             self.assertEqual(path.read_bytes(), original)
             self.assertEqual([item.name for item in Path(tmp).iterdir()], ["mod.json"])
 
+    def test_fsync_failure_preserves_old_manifest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "mod.json")
+            original = b'{"enabled": true}\n'
+            path.write_bytes(original)
+            with mock.patch.object(leonida_mods.os, "fsync", side_effect=OSError("simulated sync failure")):
+                with self.assertRaisesRegex(OSError, "simulated sync failure"):
+                    leonida_mods.write_manifest(str(path), {"enabled": False})
+            self.assertEqual(path.read_bytes(), original)
+            self.assertEqual(sorted(p.name for p in Path(tmp).iterdir()), ["mod.json"])
+
+    def test_cli_disable_failure_does_not_change_enabled_setting(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            mods = Path(tmp, "mods")
+            path = mods / "example" / "mod.json"
+            write_json(path, MANDY)
+            original = path.read_bytes()
+            with mock.patch.object(leonida_mods.os, "replace",
+                                   side_effect=OSError("simulated replace failure")):
+                code, out, err = cli("--dir", str(mods), "disable", "example")
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("simulated replace failure", err)
+            self.assertEqual(path.read_bytes(), original)
+            self.assertTrue(read_json(path)["enabled"])
+            self.assertEqual(sorted(p.name for p in path.parent.iterdir()), ["mod.json"])
+
     def test_failed_replace_preserves_original_and_removes_temp(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp, "mod.json")
