@@ -348,6 +348,36 @@ class Rdna2DecodeUnitTests(unittest.TestCase):
                 for field in ("op", "args", "mods"):
                     self.assertEqual(reparsed[field], expected[field])
 
+    def test_permlane_op_sel_fi_bc(self):
+        # Independent LLVM 19 disassembly of these synthetic GFX10 encodings.
+        # op_sel is [FI, BC]; the default [0,0] is omitted.
+        cases = (
+            ("0a0077d702091400", "v_permlane16_b32", ""),
+            ("0a0877d702091400", "v_permlane16_b32", " op_sel:[1,0]"),
+            ("0a1077d702091400", "v_permlane16_b32", " op_sel:[0,1]"),
+            ("0a1877d702091400", "v_permlane16_b32", " op_sel:[1,1]"),
+            ("0a0078d702091400", "v_permlanex16_b32", ""),
+            ("0a0878d702091400", "v_permlanex16_b32", " op_sel:[1,0]"),
+            ("0a1078d702091400", "v_permlanex16_b32", " op_sel:[0,1]"),
+            ("0a1878d702091400", "v_permlanex16_b32", " op_sel:[1,1]"),
+        )
+        for cpu in ("gfx1013", "gfx1030"):
+            for wave32 in (True, False):
+                for hexcode, name, suffix in cases:
+                    with self.subTest(cpu=cpu, wave32=wave32, hexcode=hexcode):
+                        raw = bytes.fromhex(hexcode)
+                        expected = shader_ir.parse_line(name + " v10, v2, s4, s5" + suffix)
+                        dec = rdna2_decode.decode_bytes(raw, mcpu=cpu, wave32=wave32)
+                        self.assertEqual(dec["invalid"], 0)
+                        (ins,) = dec["insns"]
+                        asm, invalid = rdna2_decode.disasm_bytes(raw, mcpu=cpu, wave32=wave32)
+                        self.assertEqual(invalid, 0)
+                        reparsed = shader_ir.parse_line(asm.strip())
+                        for field in ("op", "args", "mods"):
+                            self.assertEqual(ins[field], expected[field])
+                            self.assertEqual(reparsed[field], expected[field])
+                        self.assertEqual(ins["enc"], hexcode)
+
     def test_parity_with_llvm_mc_on_shader_fixtures(self):
         mc = os.environ.get("LLVM_MC") or shutil.which("llvm-mc") or shutil.which("llvm-mc-18")
         if not mc:
