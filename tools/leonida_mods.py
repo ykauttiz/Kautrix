@@ -31,10 +31,17 @@ import stat
 import subprocess
 import sys
 import tempfile
+import unicodedata
 import zipfile
+import zlib
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 from types import SimpleNamespace
+
+# Protect mod installation from oversized or highly compressed ZIP packages.
+MAX_ZIP_MEMBERS = 2048
+MAX_ZIP_MEMBER_BYTES = 128 * 1024 * 1024
+MAX_ZIP_TOTAL_BYTES = 512 * 1024 * 1024
 
 EXPECTED_EXE = "game_scarlett_master.exe"
 MANIFEST = "mod.json"
@@ -293,7 +300,47 @@ def extract_zip(source: str, destination: str) -> None:
     except zipfile.BadZipFile as exc:
         raise ModsError(f"{source} is not a readable ZIP package") from exc
     with archive:
-        for info in archive.infolist():
+        members = archive.infolist()
+        if len(members) > MAX_ZIP_MEMBERS:
+            raise ModsError(f"ZIP package has too many entries ({len(members)} > {MAX_ZIP_MEMBERS})")
+        estimated = 0
+        seen = set()
+        directories = {}
+        files = set()
+        for info in members:
+            parts = zip_parts(info.filename)
+            relative = "/".join(parts)
+            canonical = unicodedata.normalize("NFC", relative).casefold()
+            if canonical in seen:
+                raise ModsError(f"ZIP package repeats member {info.filename!r} (case-insensitive)")
+            seen.add(canonical)
+            # Validate implicit parents too: a.zip can contain A/x and a/y,
+            # which otherwise creates different trees on Linux and Windows.
+            for depth in range(1, len(parts)):
+                parent = "/".join(parts[:depth])
+                key = unicodedata.normalize("NFC", parent).casefold()
+                if key in files:
+                    raise ModsError(f"ZIP member {info.filename!r} is nested beneath a file")
+                previous = directories.setdefault(key, parent)
+                if previous != parent:
+                    raise ModsError(f"ZIP directory {parent!r} conflicts with {previous!r} on case-insensitive filesystems")
+            if info.is_dir():
+                if canonical in files:
+                    raise ModsError(f"ZIP directory {relative!r} conflicts with a file")
+                previous = directories.setdefault(canonical, relative)
+                if previous != relative:
+                    raise ModsError(f"ZIP directory {relative!r} conflicts with {previous!r} on case-insensitive filesystems")
+                continue
+            if canonical in directories:
+                raise ModsError(f"ZIP file {relative!r} conflicts with a directory")
+            files.add(canonical)
+            if info.file_size > MAX_ZIP_MEMBER_BYTES:
+                raise ModsError(f"ZIP member {info.filename!r} exceeds the per-file size limit")
+            estimated += info.file_size
+            if estimated > MAX_ZIP_TOTAL_BYTES:
+                raise ModsError("ZIP package exceeds the total uncompressed size limit")
+        expanded = 0
+        for info in members:
             parts = zip_parts(info.filename)
             target = os.path.join(destination, *parts)
             if not is_within(target, destination):
@@ -305,8 +352,19 @@ def extract_zip(source: str, destination: str) -> None:
                 os.makedirs(target, exist_ok=True)
                 continue
             os.makedirs(os.path.dirname(target), exist_ok=True)
-            with archive.open(info) as src, open(target, "wb") as dst:
-                shutil.copyfileobj(src, dst)
+            member_bytes = 0
+            try:
+                with archive.open(info) as src, open(target, "wb") as dst:
+                    while chunk := src.read(64 * 1024):
+                        member_bytes += len(chunk)
+                        expanded += len(chunk)
+                        if member_bytes > MAX_ZIP_MEMBER_BYTES or expanded > MAX_ZIP_TOTAL_BYTES:
+                            raise ModsError(f"ZIP extraction size limit exceeded at {info.filename!r}")
+                        dst.write(chunk)
+            except (zipfile.BadZipFile, zlib.error, EOFError, NotImplementedError, RuntimeError) as exc:
+                # A bad CRC, a truncated or corrupt stream, an unsupported compression method, or an
+                # encrypted member (never decrypted here) is a bad package, not a crash.
+                raise ModsError(f"ZIP member {info.filename!r} cannot be read: {exc}") from exc
 
 
 def write_manifest(path: str, data: dict) -> None:
