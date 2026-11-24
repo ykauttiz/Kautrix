@@ -65,6 +65,18 @@ def test_a_single_program_run_exits_like_the_suite(statuses, code, capsys, monke
     assert ("no program ran: every one was skipped" in capsys.readouterr().out) == (code == 2)
 
 
+@pytest.mark.parametrize("cc, expected", [
+    ("eq", "eq"), ("ne", "lg"), ("lt", "lt"), ("le", "le"),
+    ("gt", "gt"), ("ge", "ge"),
+])
+def test_scalar_if_uses_real_rdna2_sopc_mnemonics(cc, expected):
+    e = cf_diff.Emitter(32)
+    e.program([("sif", (cc, 10, 3), True, [("probe", 1)], None)])
+    instructions = [text for text, _size in e.assemble()]
+    assert f"s_cmp_{expected}_u32 s10, 3" in instructions
+    assert not any(text.startswith("s_cmp_ne_u32 ") for text in instructions)
+
+
 def test_generation_is_deterministic():
     assert cf_diff.program_for(5, 3, 32, 3) == cf_diff.program_for(5, 3, 32, 3)
     assert cf_diff.program_for(5, 3, 32, 3) != cf_diff.program_for(5, 4, 32, 3)
