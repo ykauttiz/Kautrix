@@ -40,6 +40,7 @@ import lane_masks  # noqa: E402
 import shader_meta as _shader_meta  # noqa: E402
 import wave64_emulate_opt  # noqa: E402
 import wave64_halves  # noqa: E402
+import sparse_tfe  # noqa: E402
 
 STRUCTURED = True     # False (--dispatch-loop): every shader with branches as one loop around a switch
 # Deeper structured trees are emitted in the flat dispatch-loop form instead (--max-structured-depth, 0 = never).
@@ -73,6 +74,7 @@ FMA_EXACT = False        # --fma exact: fused multiply-adds are emulated from si
 # maintenance8 outside gather. Implicit-LOD samples become Grad samples with the derivatives of the original
 # coordinate, so a per-pixel offset doesn't change the LOD. Gathers keep their Offset (shaderImageGatherExtended).
 TEXEL_OFFSET_FALLBACK = False
+SPARSE_TFE_EXPERIMENT = False  # offline opt-in only; requires shaderResourceResidency
 FLOAT_CONTROLS = True    # False (--no-float-controls): no SignedZeroInfNanPreserve, for drivers without the property
 # --mesh-compute: mesh shaders become compute shaders (same workgroup size and code) for devices without
 # VK_EXT_mesh_shader. Instead of SetMeshOutputs and the mesh outputs, the epilogue writes the vertex and primitive
@@ -296,6 +298,7 @@ class Gen:
         self.uses_store_views = set()  # image_store dims used (index into STORE_DIMS)
         self.uses_int_sampler = False    # 2D typed sampled-image types for sampling and gathering
         self.uses_int_fetch = set()    # typed image_load dims (index into STORE_DIMS): uint/sint sampled aliases
+        self.uses_sparse_tfe = False
         self.uses_d16_image = False    # a d16 image result is narrowed: needs the normalized / 32-bit-float tables
         self.uses_fmt_size = False    # %fmt_size_tab: byte size of each 7-bit buffer FORMAT code (0 = not in FORMATS)
         self.reads_store_views = False  # a coherent image_load reads a storage view (StorageImageReadWithoutFormat)
@@ -13143,6 +13146,9 @@ class Gen:
         return [s, t, layer] + f[3:]
 
     def image_op(self, op, a, mods):
+        if SPARSE_TFE_EXPERIMENT and ("tfe" in mods or "lwe" in mods):
+            if op != "image_load" or "lwe" in mods or "glc" in mods:
+                raise Unsupported(op + " experimental sparse TFE: only noncoherent image_load without LWE")
         a16 = "a16" in mods
         d16 = "d16" in mods
         dim = next((m for m in mods if m.startswith("dim:")), "dim:SQ_RSRC_IMG_2D")
@@ -13227,6 +13233,14 @@ class Gen:
                 # 16-bit integer coordinates: each half is an unsigned 16-bit int, not an f16.
                 coords = self.unpack_image_a16_uints([self.load_reg("vgpr", r) for r in addr])
         if op == "image_load":
+            status = None
+            if SPARSE_TFE_EXPERIMENT and "tfe" in mods:
+                if dim != "dim:SQ_RSRC_IMG_2D":
+                    raise Unsupported(op + " experimental sparse TFE: only 2D")
+                try:
+                    status = sparse_tfe.status_register(vdata["r"], vdata.get("n", 1), dmask, d16)
+                except ValueError as exc:
+                    raise Unsupported(str(exc)) from exc
             if len(coords) < ncoord:
                 raise Unsupported("image_load coords")
             ints = [self.as_int(c) for c in coords[:ncoord]]
@@ -13239,7 +13253,7 @@ class Gen:
                 self.image_load_coherent(view_dim, self.sgpr_word(a[2], 1), iv, img_idx, dmask, vdata, d16)
                 return
             self.image_load_typed(view_dim, self.sgpr_word(a[2], 1), iv, img, img_idx,
-                                  dmask, vdata, self.cu(0), d16)
+                                  dmask, vdata, self.cu(0), d16, status=status)
             return
         else:
             smp_idx = self.desc_lookup_sgpr(a[3], 4)
@@ -13691,8 +13705,13 @@ class Gen:
             self.emit(f"{half} = OpExtInst %uint %glsl UMin {bits} {self.cu(0xFFFF)}")
         return half
 
-    def image_load_typed(self, dim, t1, iv, img, idx, dmask, vdata, lod, d16=False):
+    def image_load_typed(self, dim, t1, iv, img, idx, dmask, vdata, lod, d16=False, status=None):
+        if status is not None:
+            self.uses_sparse_tfe = True
+
         def fetch(image, _cls, ty):
+            if status is not None:
+                return sparse_tfe.emit_fetch(self, image, iv, lod, ty, idx, status)
             res = self.tmp()
             self.emit(f"{res} = OpImageFetch {ty} {image} {iv} Lod {lod}")
             return res
@@ -14074,6 +14093,8 @@ class Gen:
 
     def image_misc(self, op, a, mods):
         """Query sampled image dimensions, load mip texels and handle storage image operations."""
+        if SPARSE_TFE_EXPERIMENT and ("tfe" in mods or "lwe" in mods):
+            raise Unsupported(op + " experimental sparse TFE: unsupported image operation")
         if a and a[0]["k"] != "vgpr":      # `off`, an SGPR or a constant where the VGPR range of the data goes
             raise Unsupported(op + " data")
         dim = next((m for m in mods if m.startswith("dim:")), "dim:SQ_RSRC_IMG_2D")
@@ -15348,6 +15369,8 @@ def assemble(gen):
         (["ImageQuery"] if gen.uses_query else []) + (["Sampled1D"] if gen.uses_tex_1d else []) + \
         (["MinLod"] if gen.uses_minlod else []) + (["ImageGatherExtended"] if gen.uses_img_offset else []) + \
         (["FragmentBarycentricKHR"] if bary_builtin else [])
+    if gen.uses_sparse_tfe:
+        caps.append("SparseResidency")
     if gen.uses_vote:
         caps += [c for c in ("GroupNonUniform", "GroupNonUniformVote") if c not in caps]
     if gen.uses_ballot or gen.uses_bcast_first:
@@ -15686,6 +15709,9 @@ def assemble(gen):
                   f"%fmt_mask_arr = OpTypeArray %uint {gen.cu(16)}",
                   "%_ptr_Private_fmt = OpTypePointer Private %fmt_mask_arr",
                   "%_ptr_Private_uint = OpTypePointer Private %uint"]
+        if gen.uses_sparse_tfe:
+            types += [f"%tfe_result_{i} = OpTypeStruct %uint {ty}"
+                      for i, ty in enumerate(sparse_tfe.TEXEL_TYPES)]
         for nm, words in (("uint", u), ("sint", si)) + (
                 (("norm", Gen.float_format_masks()[0]), ("f32", Gen.float_format_masks()[1]))
                 if gen.uses_d16_image else ()):
@@ -18360,6 +18386,7 @@ def shader_meta(g, asm, src_path=None, fssm_path=None):
              "RuntimeDescriptorArray": "runtimeDescriptorArray", "ImageGatherExtended": "shaderImageGatherExtended",
              "SampledImageArrayDynamicIndexing": "shaderSampledImageArrayDynamicIndexing",
              "StorageImageArrayDynamicIndexing": "shaderStorageImageArrayDynamicIndexing",
+             "SparseResidency": "shaderResourceResidency",
              "MinLod": "shaderResourceMinLod", "Image1D": "shaderImage1D? (core)", "Sampled1D": "core",
              "ClipDistance": "shaderClipDistance", "CullDistance": "shaderCullDistance",
              "ShaderLayer": "shaderOutputLayer", "ShaderViewportIndex": "shaderOutputViewportIndex",
@@ -18782,6 +18809,9 @@ def main():
     ap.add_argument("--texel-offset-fallback", action="store_true",
                     help="image_sample*_o without VK_KHR_maintenance8 (e.g. NVIDIA Pascal): fold the texel offset into "
                          "the coordinate instead of the Offset operand")
+    ap.add_argument("--experimental-sparse-tfe", action="store_true",
+                    help="offline 2D sampled image_load TFE prototype; requires shaderResourceResidency; "
+                         "runtime/device negotiation and nonresident data behavior not validated")
     ap.add_argument("--mesh-compute", action="store_true",
                     help="mesh shaders become compute shaders that write their vertices and primitives to a buffer "
                          "(metadata: mesh_compute), drawn by tools/mesh_compute_vs.py, for devices without "
@@ -18835,7 +18865,8 @@ def main():
     MAX_SHARED_BYTES = a.max_shared_memory
     MAX_STRUCTURED_DEPTH = a.max_structured_depth
     global STRUCTURED, WAVE64_EMULATE, WAVE64_GRAPHICS, BARY_FALLBACK, TEXEL_OFFSET_FALLBACK, MESH_COMPUTE, FMA_KHR, SHADER_CLOCK, F16_HALVES, OPT_SPIRV
-    global PC_TAIL_UBO
+    global PC_TAIL_UBO, SPARSE_TFE_EXPERIMENT
+    SPARSE_TFE_EXPERIMENT = a.experimental_sparse_tfe
     PC_TAIL_UBO = a.pc_tail_ubo
     global FMA_EXACT
     FMA_KHR = a.fma == "khr"
