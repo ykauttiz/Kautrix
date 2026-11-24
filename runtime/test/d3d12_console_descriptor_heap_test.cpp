@@ -66,7 +66,7 @@ bool check_console_addressed_heap(ID3D12Device* device) {
 
 bool check_xs_proxy_slot14(ID3D12Device* real_device) {
     void* proxy_raw = nullptr;
-    if (FAILED(rt::d3d12_xs::create_device_proxy(real_device, IID_ID3D12Device, &proxy_raw)) || !proxy_raw) {
+    if (FAILED(rt::d3d12_xs::create_device_proxy(real_device, __uuidof(ID3D12Device), &proxy_raw)) || !proxy_raw) {
         std::fprintf(stderr, "create_device_proxy failed\n");
         return false;
     }
