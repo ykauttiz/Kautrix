@@ -10,6 +10,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,6 +38,15 @@ def read_json(path):
     with open(path, encoding="utf-8") as f:
         return json.load(f)
 
+
+def change_zip_header_field(path, local_offset, central_offset, value):
+    """Patch a synthetic one-member ZIP to exercise error handling before extraction."""
+    data = bytearray(path.read_bytes())
+    for signature, offset in ((bytes.fromhex("504b0304"), local_offset),
+                              (bytes.fromhex("504b0102"), central_offset)):
+        index = data.index(signature)
+        data[index + offset:index + offset + 2] = value.to_bytes(2, "little")
+    path.write_bytes(data)
 
 def cli(*argv):
     out, err = io.StringIO(), io.StringIO()
@@ -135,6 +145,190 @@ class ManagerTests(unittest.TestCase):
             self.assertEqual(out, "")
             self.assertIn("unsafe ZIP member", err)
             self.assertFalse(Path(tmp, "escape.txt").exists())
+
+    def test_zip_install_rejects_member_larger_than_limit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "oversized.zip")
+            with zipfile.ZipFile(package, "w", zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+                archive.writestr("large.txt", "x" * 1100)
+            mods = Path(tmp, "mods")
+            with mock.patch.object(leonida_mods, "MAX_ZIP_MEMBER_BYTES", 1000):
+                code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("per-file size limit", err)
+            self.assertEqual(list(mods.iterdir()), [])
+
+    def test_zip_install_rejects_excessive_total_size(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "too-many-bytes.zip")
+            with zipfile.ZipFile(package, "w", zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+                archive.writestr("a.txt", "a" * 600)
+                archive.writestr("b.txt", "b" * 600)
+            mods = Path(tmp, "mods")
+            with mock.patch.object(leonida_mods, "MAX_ZIP_TOTAL_BYTES", 1024):
+                code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("total uncompressed size limit", err)
+            self.assertEqual(list(mods.iterdir()), [])
+
+    def test_zip_install_rejects_too_many_entries(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "too-many-entries.zip")
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+                archive.writestr("a.txt", "a")
+                archive.writestr("b.txt", "b")
+            mods = Path(tmp, "mods")
+            with mock.patch.object(leonida_mods, "MAX_ZIP_MEMBERS", 2):
+                code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("too many entries", err)
+            self.assertEqual(list(mods.iterdir()), [])
+
+    def test_zip_install_rejects_duplicate_member_names(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "duplicate.zip")
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+                archive.writestr("notes.txt", "first")
+                archive.writestr("notes.txt", "second")
+            mods = Path(tmp, "mods")
+            code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("repeats member", err)
+            self.assertEqual(list(mods.iterdir()), [])
+
+    def test_zip_install_rejects_case_insensitive_collisions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "case-collision.zip")
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+                archive.writestr("notes.txt", "first")
+                archive.writestr("NOTES.TXT", "second")
+            mods = Path(tmp, "mods")
+            code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("repeats member", err)
+            self.assertEqual(list(mods.iterdir()), [])
+
+    def test_zip_install_keeps_distinct_subfolders(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "distinct.zip")
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+                archive.writestr("first/notes.txt", "one")
+                archive.writestr("second/notes.txt", "two")
+            mods = Path(tmp, "mods")
+            code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual((code, err), (0, ""))
+            self.assertEqual(out.count("installed"), 1)
+            self.assertEqual(Path(mods, "distinct", "first", "notes.txt").read_text(), "one")
+            self.assertEqual(Path(mods, "distinct", "second", "notes.txt").read_text(), "two")
+
+    def test_zip_install_accepts_explicit_directory_before_its_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "with-dir.zip")
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+                archive.writestr("assets/", "")
+                archive.writestr("assets/notes.txt", "safe")
+            mods = Path(tmp, "mods")
+            code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual((code, err), (0, ""))
+            self.assertIn("installed with-dir", out)
+            self.assertEqual(Path(mods, "with-dir", "assets", "notes.txt").read_text(), "safe")
+
+    def test_zip_install_rejects_implicit_case_insensitive_directories(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "case-parent.zip")
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+                archive.writestr("Assets/a.txt", "a")
+                archive.writestr("assets/b.txt", "b")
+            mods = Path(tmp, "mods")
+            code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual(code, 2)
+            self.assertIn("conflicts", err)
+            self.assertEqual(list(mods.iterdir()), [])
+
+    def test_zip_install_rejects_file_directory_conflicts(self):
+        for reverse in (False, True):
+            with self.subTest(reverse=reverse), tempfile.TemporaryDirectory() as tmp:
+                package = Path(tmp, "file-parent.zip")
+                entries = [("assets", "file"), ("assets/data.txt", "child")]
+                with zipfile.ZipFile(package, "w") as archive:
+                    archive.writestr("mod.json", json.dumps(MANDY))
+                    for member, content in (reversed(entries) if reverse else entries):
+                        archive.writestr(member, content)
+                mods = Path(tmp, "mods")
+                code, out, err = cli("--dir", str(mods), "install", str(package))
+                self.assertEqual(code, 2)
+                self.assertTrue("file" in err or "directory" in err, err)
+                self.assertEqual(list(mods.iterdir()), [])
+
+    def test_zip_install_rejects_nfc_equivalent_directory_names(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "unicode-collision.zip")
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+                archive.writestr("caf\u00e9/one.txt", "one")
+                archive.writestr("cafe\u0301/two.txt", "two")
+            mods = Path(tmp, "mods")
+            code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual(code, 2)
+            self.assertIn("conflicts", err)
+            self.assertEqual(list(mods.iterdir()), [])
+    def test_zip_install_reports_a_corrupt_member_instead_of_crashing(self):
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_STORED) as archive:
+            archive.writestr("mod.json", json.dumps(MANDY))
+            archive.writestr("data.bin", b"A" * 200)
+        blob = bytearray(buffer.getvalue())
+        blob[blob.index(b"A" * 50) + 10] ^= 0x01  # the stored bytes no longer match the recorded CRC-32
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "corrupt.zip")
+            package.write_bytes(bytes(blob))
+            mods = Path(tmp, "mods")
+            code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual((code, out), (2, ""))
+            self.assertIn("cannot be read", err)
+            self.assertNotIn("Traceback", err)
+            # Nothing half-installed and no staging folder left behind.
+            self.assertEqual(list(mods.iterdir()) if mods.exists() else [], [])
+
+
+    def test_zip_install_rejects_encrypted_member_before_extraction(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "encrypted.zip")
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+            change_zip_header_field(package, 6, 8, 1)  # general-purpose bit 0
+            mods = Path(tmp, "mods")
+            code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("encrypted", err)
+            self.assertEqual(list(mods.iterdir()), [])
+
+    def test_zip_install_rejects_unsupported_compression(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "unsupported.zip")
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+            change_zip_header_field(package, 8, 10, 99)  # unknown method
+            mods = Path(tmp, "mods")
+            code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("unsupported compression method", err)
+            self.assertEqual(list(mods.iterdir()), [])
 
     def test_check_reports_broken_manifest(self):
         with tempfile.TemporaryDirectory() as tmp:
