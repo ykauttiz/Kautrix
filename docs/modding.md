@@ -34,8 +34,9 @@ At start the runtime prints what it loaded, for example:
 `tools/leonida_mods.py` is the small mod manager. It writes only in the port's `mods` folder: it can create,
 install, list, check, enable, disable, pack and remove mods. A package is a normal ZIP file (the `.leonidamod`
 extension is only a name) with `mod.json` at its top level or inside one top-level folder. The installer refuses
-paths that climb out of the package, links and manifests the runtime would reject; it never goes online and never
-copies game data.
+paths that climb out of the package, links, case-insensitive duplicate entry names and manifests the runtime
+would reject. ZIP imports are limited to 2,048 entries, 128 MiB per extracted file and 512 MiB total uncompressed
+data; oversized packages fail before installation. The manager never goes online and never copies game data.
 
 On Windows, double-click **`Mods.bat`** for the Tkinter window: choose the port folder, install a ZIP or folder,
 toggle a mod, create a swap, pack or remove one, and launch `gta6rt` normally or as a dry run. The GUI uses the same
