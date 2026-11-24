@@ -225,6 +225,34 @@ OpReturn
             find_guarded_texel_block(spv)
 
 
+    def test_static_true_guard_with_no_exec_write_is_valid(self):
+        spv = """
+%entry = OpLabel
+OpSelectionMerge %merge None
+OpBranchConditional %true %guarded %merge
+%guarded = OpLabel
+%ptr = OpImageTexelPointer %ptr_image %img %coords %sample
+OpBranch %merge
+%merge = OpLabel
+OpReturn
+"""
+        self.assertEqual([name for name, _ in find_guarded_texel_block(spv)], ["%guarded"])
+
+    def test_static_true_guard_cannot_hide_dynamic_exec_write(self):
+        spv = """
+%entry = OpLabel
+OpStore %active %false
+OpSelectionMerge %merge None
+OpBranchConditional %true %guarded %merge
+%guarded = OpLabel
+%ptr = OpImageTexelPointer %ptr_image %img %coords %sample
+OpBranch %merge
+%merge = OpLabel
+OpReturn
+"""
+        with self.assertRaisesRegex(AssertionError, "unguarded block %guarded"):
+            find_guarded_texel_block(spv)
+
 class ImageAtomicsGuardTests(unittest.TestCase):
     def test_all_image_atomics_2d_and_3d_guarded_and_valid(self):
         simple_ops = [
