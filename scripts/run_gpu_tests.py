@@ -272,7 +272,19 @@ def verdict_line(rc: int, msg: str) -> str:
     exited non-zero gets its exit status in front, as in check.py, so one that died before its verdict (exit -11 on
     Linux, 3221225477 = 0xC0000005 on Windows) does not read as a FAIL with only its device or extension line, or
     with no detail at all."""
-    return failure(rc, msg, 1) if rc else msg.splitlines()[-1] if msg else ""
+    if not rc:
+        return msg.splitlines()[-1] if msg else ""
+    # run_cmd combines stdout then stderr. The Vulkan helper prints per-image
+    # readback mismatches to stdout but its device banner to stderr, so the
+    # banner can appear last and hide the reason for a non-zero exit.
+    lines = [line.strip() for line in msg.splitlines() if line.strip()]
+    if len(lines) > 1 and lines[-1].startswith("device:"):
+        diagnostics = [line for line in lines[:-1] if not line.startswith("device:")]
+        if diagnostics:
+            # Include all three image verdicts (RGBA/UINT/SINT), but keep CI
+            # summary rows bounded even for verbose driver diagnostics.
+            return f"exit {rc}: " + " | ".join(line[:240] for line in diagnostics[-3:])
+    return failure(rc, msg, 1)
 
 
 def helper_result(rc: int, msg: str) -> tuple[bool | None, str]:
