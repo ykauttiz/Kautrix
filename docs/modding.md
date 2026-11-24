@@ -38,7 +38,8 @@ paths that climb out of the package, links, case-insensitive duplicate entry nam
 would reject. ZIP imports are limited to 2,048 entries, 128 MiB per extracted file and 512 MiB total uncompressed
 data; oversized packages fail before installation. The ZIP preflight also rejects file/directory conflicts,
 differently capitalized parent directories and equivalent Unicode names (NFC), so a package cannot silently
-extract to different paths on case-insensitive filesystems. The manager never goes online and never copies game data.
+extract to different paths on case-insensitive filesystems. Encrypted ZIP entries and unsupported compression
+methods are rejected with a diagnostic before any package files are extracted. The manager never goes online and never copies game data.
 
 On Windows, double-click **`Mods.bat`** for the Tkinter window: choose the port folder, install a ZIP or folder,
 toggle a mod, create a swap, pack or remove one, and launch `gta6rt` normally or as a dry run. The GUI uses the same
