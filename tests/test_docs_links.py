@@ -17,7 +17,9 @@ from urllib.parse import unquote
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-FENCE = re.compile(r"```.*?```", re.S)
+# CommonMark fences start with >=3 identical backticks or tildes and <=3 spaces.
+FENCE_OPEN = re.compile(r"^ {0,3}(`{3,}|~{3,})([^\r\n]*)$")
+FENCE_CLOSE = re.compile(r"^ {0,3}(`{3,}|~{3,})[ \t]*$")
 LINK = re.compile(r"!?\[[^\]]*\]\((?:<([^>]+)>|([^)\s]+))(?:\s+\"[^\"]*\")?\)")
 HTML = re.compile(r'(?:href|src)\s*=\s*"([^"]+)"')
 HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$", re.M)
@@ -25,8 +27,30 @@ EXTERNAL = ("http://", "https://", "mailto:", "tel:", "data:")
 
 
 def strip_fences(text):
-    """Drop fenced code blocks: headings and links inside them are not rendered."""
-    return FENCE.sub("", text)
+    """Remove fenced-code contents without hiding real Markdown headings/links.
+
+    Preserve line separators to avoid joining unrelated prose around a block.
+    Inline backticks, indented code and fence-like text inside a longer fence do
+    not open or close anything. Accept LF and CRLF even in direct callers.
+    """
+    out = []
+    marker = None
+    for line in text.splitlines(keepends=True):
+        body = line.rstrip("\r\n")
+        eol = line[len(body):]
+        if marker is None:
+            opened = FENCE_OPEN.match(body)
+            if opened and (opened.group(1).startswith("~") or "`" not in opened.group(2)):
+                marker = (opened.group(1)[0], len(opened.group(1)))
+                out.append(eol)
+                continue
+            out.append(line)
+            continue
+        closed = FENCE_CLOSE.match(body)
+        if closed and closed.group(1)[0] == marker[0] and len(closed.group(1)) >= marker[1]:
+            marker = None
+        out.append(eol)
+    return "".join(out)
 
 
 def slug(heading):
