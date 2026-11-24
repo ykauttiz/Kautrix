@@ -10,6 +10,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -135,6 +136,50 @@ class ManagerTests(unittest.TestCase):
             self.assertEqual(out, "")
             self.assertIn("unsafe ZIP member", err)
             self.assertFalse(Path(tmp, "escape.txt").exists())
+
+    def test_zip_install_rejects_member_larger_than_limit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "oversized.zip")
+            with zipfile.ZipFile(package, "w", zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+                archive.writestr("large.txt", "x" * 1100)
+            mods = Path(tmp, "mods")
+            with mock.patch.object(leonida_mods, "MAX_ZIP_MEMBER_BYTES", 1000):
+                code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("per-file size limit", err)
+            self.assertEqual(list(mods.iterdir()), [])
+
+    def test_zip_install_rejects_excessive_total_size(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "too-many-bytes.zip")
+            with zipfile.ZipFile(package, "w", zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+                archive.writestr("a.txt", "a" * 600)
+                archive.writestr("b.txt", "b" * 600)
+            mods = Path(tmp, "mods")
+            with mock.patch.object(leonida_mods, "MAX_ZIP_TOTAL_BYTES", 1024):
+                code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("total uncompressed size limit", err)
+            self.assertEqual(list(mods.iterdir()), [])
+
+    def test_zip_install_rejects_too_many_entries(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "too-many-entries.zip")
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+                archive.writestr("a.txt", "a")
+                archive.writestr("b.txt", "b")
+            mods = Path(tmp, "mods")
+            with mock.patch.object(leonida_mods, "MAX_ZIP_MEMBERS", 2):
+                code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("too many entries", err)
+            self.assertEqual(list(mods.iterdir()), [])
 
     def test_check_reports_broken_manifest(self):
         with tempfile.TemporaryDirectory() as tmp:
