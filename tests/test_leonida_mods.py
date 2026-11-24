@@ -181,6 +181,48 @@ class ManagerTests(unittest.TestCase):
             self.assertIn("too many entries", err)
             self.assertEqual(list(mods.iterdir()), [])
 
+    def test_zip_install_rejects_duplicate_member_names(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "duplicate.zip")
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+                archive.writestr("notes.txt", "first")
+                archive.writestr("notes.txt", "second")
+            mods = Path(tmp, "mods")
+            code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("repeats member", err)
+            self.assertEqual(list(mods.iterdir()), [])
+
+    def test_zip_install_rejects_case_insensitive_collisions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "case-collision.zip")
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+                archive.writestr("notes.txt", "first")
+                archive.writestr("NOTES.TXT", "second")
+            mods = Path(tmp, "mods")
+            code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual(code, 2)
+            self.assertEqual(out, "")
+            self.assertIn("repeats member", err)
+            self.assertEqual(list(mods.iterdir()), [])
+
+    def test_zip_install_keeps_distinct_subfolders(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            package = Path(tmp, "distinct.zip")
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("mod.json", json.dumps(MANDY))
+                archive.writestr("first/notes.txt", "one")
+                archive.writestr("second/notes.txt", "two")
+            mods = Path(tmp, "mods")
+            code, out, err = cli("--dir", str(mods), "install", str(package))
+            self.assertEqual((code, err), (0, ""))
+            self.assertEqual(out.count("installed"), 1)
+            self.assertEqual(Path(mods, "distinct", "first", "notes.txt").read_text(), "one")
+            self.assertEqual(Path(mods, "distinct", "second", "notes.txt").read_text(), "two")
+
     def test_check_reports_broken_manifest(self):
         with tempfile.TemporaryDirectory() as tmp:
             broken = Path(tmp, "mods", "broken")
