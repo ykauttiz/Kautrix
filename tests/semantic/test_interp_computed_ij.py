@@ -47,6 +47,34 @@ def floats(words):
     return struct.unpack("<" + "f" * len(words), struct.pack("<" + "I" * len(words), *words))
 
 
+class TfeCopySourceTests(unittest.TestCase):
+    def test_mimg_status_is_not_counted_twice(self):
+        # MIMG VDATA includes the status word; buffer IR still uses an implicit extra word.
+        from shader_ir import parse_line
+
+        for instruction, last in (
+            ("image_load v[8:9], v[20:21], s[8:15] dmask:0x1 dim:SQ_RSRC_IMG_2D unorm tfe", 9),
+            ("image_load v[8:10], v[20:21], s[8:15] dmask:0xf dim:SQ_RSRC_IMG_2D unorm d16 tfe", 10),
+            ("image_sample v[8:12], v[20:21], s[8:15], s[16:19] dmask:0xf dim:SQ_RSRC_IMG_2D tfe", 12),
+            ("image_load v8, v[20:21], s[8:15] dmask:0x1 dim:SQ_RSRC_IMG_2D unorm", 8),
+        ):
+            with self.subTest(instruction=instruction):
+                insns = [parse_line(f"v_mov_b32_e32 v{last}, v0"),
+                         parse_line(f"v_mov_b32_e32 v{last + 1}, v0"),
+                         parse_line(instruction)]
+                # The overwritten last word is no longer a copy, but its neighbor is.
+                self.assertEqual(rdna2spirv.interp_copy_sources(insns), {last + 1: (0, 1)})
+
+    def test_buffer_implicit_tfe_status_still_counts(self):
+        from shader_ir import parse_line
+
+        insns = [parse_line("v_mov_b32_e32 v9, v0"),
+                 parse_line("v_mov_b32_e32 v10, v0"),
+                 {"op": "buffer_load_dword", "args": [{"k": "vgpr", "r": 8, "n": 1}],
+                  "mods": ["tfe"]}]
+        self.assertEqual(rdna2spirv.interp_copy_sources(insns), {10: (0, 1)})
+
+
 class ComputedIJ(unittest.TestCase):
     def test_swap_reads_both_incoming_barycentrics(self) -> None:
         _, words = run(["v_swap_b32 v0, v1", "exp mrt0 v0, v1, v0, v1 done vm", "s_endpgm"])
