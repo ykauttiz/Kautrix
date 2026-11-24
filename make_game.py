@@ -853,9 +853,10 @@ def preflight(stages: list, work: str, wav: bool = False, runtime_build: str | N
         missing.append("Visual Studio 2022 with 'Desktop development with C++'")
     if os.name != "nt" and not runtime_build and any(s in WINDOWS_ONLY for s in stages):
         missing.extend(f"{s} (for the runtime stage, or pass --runtime-build)" for s in cross_build_missing())
-    # The pipelines stage needs a checker the runtime stage builds (on Windows only with VULKAN_SDK set).
-    # Without this check a build with shaders and pipelines spends hours before failing at the very end.
-    if "pipelines" in stages and not pipeline_check_exe(runtime_build):
+    # Linux always refreshes the checker via CMake: an existing executable may be stale.
+    # Windows needs the checker supplied by the runtime build (with VULKAN_SDK set).
+    # Check prerequisites before a long shader build rather than failing at the end.
+    if "pipelines" in stages and (os.name != "nt" or not pipeline_check_exe(runtime_build)):
         if os.name != "nt":
             if not shutil.which("cmake"):
                 missing.append("CMake 3.24 or newer, a C++20 compiler and the Vulkan headers, to build "
@@ -900,7 +901,8 @@ def preflight(stages: list, work: str, wav: bool = False, runtime_build: str | N
              "Free some space or choose another drive with --work." + hint)
     if os.name != "nt" and not runtime_build and any(s in WINDOWS_ONLY for s in stages):
         cross_configure()
-    if "pipelines" in stages and os.name != "nt" and not pipeline_check_exe():
+    if "pipelines" in stages and os.name != "nt":
+        # CMake is incremental, so this also rebuilds a stale checker after source changes.
         build_pipeline_check(jobs)
         if not pipeline_check_exe():
             fail("vk_pipeline_check built, but not as runtime/build/linux/vk_pipeline_check (a multi-config "
