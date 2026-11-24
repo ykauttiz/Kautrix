@@ -127,13 +127,21 @@ def find_guarded_texel_block(spv):
                 dominators[label] = new
                 changed = True
 
+    # With no EXEC-changing instruction the translator marks exec_static_true:
+    # active_b() then returns %true instead of loading %active. Such a
+    # compile-time guard is safe only if this module never stores a dynamic
+    # value to %active; the negative regression below enforces that boundary.
+    dynamic_active_store = re.search(
+        r"^\s*OpStore %active (?!%true(?:\s|$))", spv, re.M
+    ) is not None
     guarded_targets = set()
     for insns in blocks.values():
         for i, ln in enumerate(insns):
             if ln.startswith("OpSelectionMerge ") and i + 1 < len(insns):
                 br = insns[i + 1]
                 m = re.match(r"OpBranchConditional (%\w+) (%\w+) (%\w+)", br)
-                if m and m.group(1) in active_loads:
+                if m and (m.group(1) in active_loads or
+                          (m.group(1) == "%true" and not dynamic_active_store)):
                     guarded_targets.add(m.group(2))
 
     found = []
